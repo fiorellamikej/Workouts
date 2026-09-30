@@ -1,3 +1,4 @@
+import type { PlanSession } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminPlanManager } from '@/components/AdminPlanManager'
@@ -25,7 +26,7 @@ export default async function AdminPlansPage({
   const editId = params.edit || null
 
   let plan = null
-  let sessions: any[] = []
+  let sessions: PlanSession[] = []
 
   if (editId) {
     const { data } = await supabase

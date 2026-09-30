@@ -1,3 +1,4 @@
+import type { ResultWithProfile } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatTime } from '@/lib/utils'
 import { LogResultForm } from '@/components/LogResultForm'
@@ -32,7 +33,7 @@ export default async function WorkoutDetailPage({
     userResult = data
   }
 
-  let leaderboard: any[] = []
+  let leaderboard: ResultWithProfile[] = []
   if (user) {
     const { data } = await supabase
       .from('results')
@@ -40,6 +41,7 @@ export default async function WorkoutDetailPage({
       .eq('workout_id', workout.id)
       .order('completion_time_seconds', { ascending: true, nullsFirst: false })
       .limit(20)
+      .returns<ResultWithProfile[]>()
     leaderboard = data || []
   }
 

@@ -23,7 +23,6 @@ export function LogPlanResultForm({
   const [extraReps, setExtraReps] = useState('')
   const [weightUsed, setWeightUsed] = useState('')
   const [isRx, setIsRx] = useState(true)
-  const [notes, setNotes] = useState('')
   const [mode, setMode] = useState<'time' | 'amrap' | 'just_done'>('time')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,7 +46,7 @@ export function LogPlanResultForm({
       extra_reps: mode === 'amrap' ? parseInt(extraReps) || null : null,
       weight_used: weightUsed || null,
       is_rx: isRx,
-      notes: notes || null,
+      notes: null,
     }
 
     const { error } = await supabase.from('plan_results').insert(payload)

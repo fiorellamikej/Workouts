@@ -1,3 +1,4 @@
+import type { ResultWithProfile } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatTime } from '@/lib/utils'
 import { redirect } from 'next/navigation'
@@ -34,6 +35,7 @@ export default async function LeaderboardPage() {
         .eq('workout_id', w.id)
         .order('completion_time_seconds', { ascending: true, nullsFirst: false })
         .limit(5)
+        .returns<ResultWithProfile[]>()
 
       if (results && results.length > 0) {
         boards.push({ workout: w, results })
@@ -69,7 +71,7 @@ export default async function LeaderboardPage() {
                 </span>
               </div>
               <div className="space-y-2">
-                {results.map((r: any, i: number) => (
+                {results.map((r, i) => (
                   <div
                     key={r.id}
                     className="flex items-center justify-between rounded-lg bg-zinc-800/50 px-4 py-2.5"

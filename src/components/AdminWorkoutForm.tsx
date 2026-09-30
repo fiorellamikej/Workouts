@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 
 export function AdminWorkoutForm() {
   const router = useRouter()
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +46,7 @@ export function AdminWorkoutForm() {
       }
     }
     loadExisting()
-  }, [workoutDate])
+  }, [workoutDate, supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

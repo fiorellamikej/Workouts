@@ -1,3 +1,4 @@
+import type { ActivePlanEnrollment, ResultWithProfile } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatTime } from '@/lib/utils'
 import Link from 'next/link'
@@ -10,7 +11,7 @@ export default async function HomePage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Active plans for this user
-  let activePlans: any[] = []
+  let activePlans: ActivePlanEnrollment[] = []
   if (user) {
     const { data } = await supabase
       .from('user_plan_enrollments')
@@ -22,6 +23,7 @@ export default async function HomePage() {
       `)
       .eq('user_id', user.id)
       .eq('status', 'active')
+      .returns<ActivePlanEnrollment[]>()
     activePlans = data || []
   }
 
@@ -43,7 +45,7 @@ export default async function HomePage() {
   }
 
   // Top 5 results for today (only if logged in)
-  let topResults: any[] = []
+  let topResults: ResultWithProfile[] = []
   if (user && workout) {
     const { data } = await supabase
       .from('results')
@@ -54,6 +56,7 @@ export default async function HomePage() {
       .eq('workout_id', workout.id)
       .order('completion_time_seconds', { ascending: true, nullsFirst: false })
       .limit(5)
+      .returns<ResultWithProfile[]>()
     topResults = data || []
   }
 

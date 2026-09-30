@@ -122,3 +122,16 @@ export type PlanResult = {
   notes: string | null
   completed_at: string
 }
+
+// Shapes returned by the partial relation selections used in pages.
+export type ResultWithProfile = Omit<Result, 'profiles'> & {
+  profiles: Pick<Profile, 'display_name'> | null
+}
+
+export type ResultWithWorkout = Omit<Result, 'workouts'> & {
+  workouts: Pick<Workout, 'title' | 'workout_date' | 'workout_type'> | null
+}
+
+export type ActivePlanEnrollment = Pick<UserPlanEnrollment, 'id' | 'status' | 'started_at'> & {
+  training_plans: Pick<TrainingPlan, 'id' | 'title' | 'duration_weeks'> | null
+}

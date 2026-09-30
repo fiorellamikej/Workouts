@@ -1,3 +1,4 @@
+import type { UserPlanEnrollment } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
@@ -12,7 +13,7 @@ export default async function PlansPage() {
     .order('created_at', { ascending: false })
 
   // Get user's active enrollments
-  let enrollments: any[] = []
+  let enrollments: Pick<UserPlanEnrollment, 'plan_id' | 'status'>[] = []
   if (user) {
     const { data } = await supabase
       .from('user_plan_enrollments')

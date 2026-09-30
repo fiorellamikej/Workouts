@@ -1,5 +1,6 @@
+import type { UserPlanEnrollment, PlanResult } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { EnrollButton } from '@/components/EnrollButton'
 import { LogPlanResultForm } from '@/components/LogPlanResultForm'
@@ -29,9 +30,9 @@ export default async function PlanDetailPage({
     .order('order_index', { ascending: true })
 
   // Enrollment + completed sessions for this user
-  let enrollment: any = null
+  let enrollment: UserPlanEnrollment | null = null
   let completedSessionIds = new Set<string>()
-  let planResults: any[] = []
+  let planResults: PlanResult[] = []
 
   if (user) {
     const { data: enr } = await supabase

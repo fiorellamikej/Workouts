@@ -1,3 +1,4 @@
+import type { ResultWithWorkout } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatTime } from '@/lib/utils'
 import { redirect } from 'next/navigation'
@@ -24,6 +25,7 @@ export default async function ProfilePage() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(20)
+    .returns<ResultWithWorkout[]>()
 
   return (
     <div className="space-y-8">
@@ -45,7 +47,7 @@ export default async function ProfilePage() {
           <p className="text-zinc-400">No results logged yet.</p>
         ) : (
           <div className="space-y-3">
-            {results.map((r: any) => (
+            {results.map((r) => (
               <Link
                 key={r.id}
                 href={`/workouts/${r.workout_id}`}
