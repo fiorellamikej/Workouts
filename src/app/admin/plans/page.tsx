@@ -1,3 +1,4 @@
+import { DeletePlanButton } from '@/components/DeletePlanButton'
 import type { PlanSession } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
@@ -10,7 +11,9 @@ export default async function AdminPlansPage({
   searchParams: Promise<{ edit?: string }>
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user) redirect('/auth/login')
 
@@ -34,6 +37,7 @@ export default async function AdminPlansPage({
       .select('*')
       .eq('id', editId)
       .single()
+
     plan = data
 
     if (plan) {
@@ -42,11 +46,11 @@ export default async function AdminPlansPage({
         .select('*')
         .eq('plan_id', editId)
         .order('order_index', { ascending: true })
+
       sessions = sess || []
     }
   }
 
-  // List all plans
   const { data: allPlans } = await supabase
     .from('training_plans')
     .select('id, title, duration_weeks, is_published, created_at')
@@ -55,35 +59,49 @@ export default async function AdminPlansPage({
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/admin" className="text-sm text-zinc-400 hover:text-white">
+        <Link
+          href="/admin"
+          className="text-sm text-zinc-400 hover:text-white"
+        >
           ← Admin
         </Link>
+
         <h1 className="mt-2 text-3xl font-bold">
           {plan ? `Edit: ${plan.title}` : 'Create Training Plan'}
         </h1>
       </div>
 
-      <AdminPlanManager existingPlan={plan} existingSessions={sessions} />
+      <AdminPlanManager
+        key={plan?.id || 'new'}
+        existingPlan={plan}
+        existingSessions={sessions}
+      />
 
       {allPlans && allPlans.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold mb-3">All Plans</h2>
-          <div className="space-y-2">
+          <h2 className="mb-3 text-lg font-semibold">All Plans</h2>
+
+          <div className="space-y-4">
             {allPlans.map((p) => (
-              <Link
-                key={p.id}
-                href={`/admin/plans?edit=${p.id}`}
-                className={`flex items-center justify-between rounded-lg border px-4 py-3 transition ${
-                  editId === p.id
-                    ? 'border-orange-500 bg-orange-500/10'
-                    : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
-                }`}
-              >
-                <span className="font-medium">{p.title}</span>
-                <span className="text-xs text-zinc-500">
-                  {p.duration_weeks}w · {p.is_published ? 'Published' : 'Draft'}
-                </span>
-              </Link>
+              <div key={p.id} className="space-y-2">
+                <Link
+                  href={`/admin/plans?edit=${p.id}`}
+                  className={`flex items-center justify-between rounded-lg border px-4 py-3 transition ${
+                    editId === p.id
+                      ? 'border-orange-500 bg-orange-500/10'
+                      : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
+                  }`}
+                >
+                  <span className="font-medium">{p.title}</span>
+
+                  <span className="text-xs text-zinc-500">
+                    {p.duration_weeks}w ·{' '}
+                    {p.is_published ? 'Published' : 'Draft'}
+                  </span>
+                </Link>
+
+                <DeletePlanButton planId={p.id} title={p.title} />
+              </div>
             ))}
           </div>
         </section>
