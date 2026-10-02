@@ -1,3 +1,5 @@
+import { PersonalizedTargets } from '@/components/PersonalizedTargets'
+import type { AthleteRecord } from '@/lib/training'
 import type { ResultWithProfile } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatTime } from '@/lib/utils'
@@ -12,7 +14,9 @@ export default async function WorkoutDetailPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const { data: workout } = await supabase
     .from('workouts')
@@ -21,6 +25,14 @@ export default async function WorkoutDetailPage({
     .single()
 
   if (!workout) notFound()
+
+  const { data: records, error: recordsError } = user
+    ? await supabase
+        .from('athlete_records')
+        .select('*')
+        .eq('user_id', user.id)
+        .returns<AthleteRecord[]>()
+    : { data: [], error: null }
 
   let userResult = null
   if (user) {
@@ -48,10 +60,15 @@ export default async function WorkoutDetailPage({
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/workouts" className="text-sm text-zinc-400 hover:text-white">
+        <Link
+          href="/workouts"
+          className="text-sm text-zinc-400 hover:text-white"
+        >
           ← History
         </Link>
-        <h1 className="mt-2 text-3xl font-bold text-orange-400">{workout.title}</h1>
+        <h1 className="mt-2 text-3xl font-bold text-orange-400">
+          {workout.title}
+        </h1>
         <p className="mt-1 text-zinc-400">{formatDate(workout.workout_date)}</p>
       </div>
 
@@ -67,6 +84,15 @@ export default async function WorkoutDetailPage({
         <div className="mt-4 whitespace-pre-wrap text-zinc-200 leading-relaxed">
           {workout.description}
         </div>
+        {user &&
+          (recordsError ? (
+            <p className="text-red-400">Could not load personalized targets.</p>
+          ) : (
+            <PersonalizedTargets
+              rules={workout.prescriptions || []}
+              records={records || []}
+            />
+          ))}
         {workout.notes && (
           <p className="mt-4 text-sm text-zinc-400 border-t border-zinc-800 pt-4">
             {workout.notes}
@@ -104,8 +130,12 @@ export default async function WorkoutDetailPage({
                 className="flex items-center justify-between rounded-lg bg-zinc-800/50 px-4 py-2.5"
               >
                 <div className="flex items-center gap-3">
-                  <span className="w-6 text-center font-mono text-sm text-zinc-500">{i + 1}</span>
-                  <span className="font-medium">{r.profiles?.display_name || 'Athlete'}</span>
+                  <span className="w-6 text-center font-mono text-sm text-zinc-500">
+                    {i + 1}
+                  </span>
+                  <span className="font-medium">
+                    {r.profiles?.display_name || 'Athlete'}
+                  </span>
                   {!r.is_rx && (
                     <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
                       Scaled

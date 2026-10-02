@@ -1,4 +1,10 @@
-import type { UserPlanEnrollment, PlanResult } from '@/types/database'
+import { PersonalizedTargets } from '@/components/PersonalizedTargets'
+import { timeText, type AthleteRecord, type ExerciseLog } from '@/lib/training'
+import type {
+  UserPlanEnrollment,
+  PlanResult,
+  PlanSession,
+} from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -13,7 +19,9 @@ export default async function PlanDetailPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const { data: plan } = await supabase
     .from('training_plans')
@@ -23,35 +31,63 @@ export default async function PlanDetailPage({
 
   if (!plan) notFound()
 
-  const { data: sessions } = await supabase
+  const { data: sessions, error: sessionsError } = await supabase
     .from('plan_sessions')
     .select('*')
     .eq('plan_id', id)
     .order('order_index', { ascending: true })
+    .order('week_number')
+    .order('day_number')
+    .order('id')
+    .returns<PlanSession[]>()
+  if (sessionsError)
+    throw new Error('Could not load program sessions. Please retry.')
 
   // Enrollment + completed sessions for this user
   let enrollment: UserPlanEnrollment | null = null
   let completedSessionIds = new Set<string>()
   let planResults: PlanResult[] = []
+  let records: AthleteRecord[] = []
+  let exerciseLogs: ExerciseLog[] = []
 
   if (user) {
-    const { data: enr } = await supabase
+    const recordQuery = await supabase
+      .from('athlete_records')
+      .select('*')
+      .eq('user_id', user.id)
+      .returns<AthleteRecord[]>()
+    if (recordQuery.error)
+      throw new Error('Could not load records. Check the database migration.')
+    records = recordQuery.data || []
+    const { data: enr, error: enrollmentError } = await supabase
       .from('user_plan_enrollments')
       .select('*')
       .eq('user_id', user.id)
       .eq('plan_id', id)
-      .single()
+      .maybeSingle()
+    if (enrollmentError) throw new Error('Could not load enrollment.')
     enrollment = enr
 
     if (enrollment) {
-      const { data: results } = await supabase
+      const { data: results, error: resultError } = await supabase
         .from('plan_results')
         .select('*')
         .eq('enrollment_id', enrollment.id)
+      if (resultError) throw new Error('Could not load completed sessions.')
+      const logQuery = await supabase
+        .from('training_exercise_logs')
+        .select('*')
+        .eq('enrollment_id', enrollment.id)
+        .order('created_at', { ascending: false })
+        .returns<ExerciseLog[]>()
+      if (logQuery.error) throw new Error('Could not load exercise history.')
+      exerciseLogs = logQuery.data || []
       planResults = results || []
       completedSessionIds = new Set(planResults.map((r) => r.session_id))
     }
   }
+
+  const nextSession = sessions?.find((s) => !completedSessionIds.has(s.id))
 
   // Group sessions by week
   const weeks: Record<number, typeof sessions> = {}
@@ -62,7 +98,8 @@ export default async function PlanDetailPage({
 
   const totalSessions = sessions?.length || 0
   const completedCount = completedSessionIds.size
-  const progressPct = totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0
+  const progressPct =
+    totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0
 
   return (
     <div className="space-y-8">
@@ -70,7 +107,9 @@ export default async function PlanDetailPage({
         <Link href="/plans" className="text-sm text-zinc-400 hover:text-white">
           ← All Plans
         </Link>
-        <h1 className="mt-2 text-3xl font-bold text-orange-400">{plan.title}</h1>
+        <h1 className="mt-2 text-3xl font-bold text-orange-400">
+          {plan.title}
+        </h1>
         {plan.goal && <p className="mt-1 text-lg text-zinc-300">{plan.goal}</p>}
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
           <span className="rounded-full bg-zinc-800 px-3 py-1">
@@ -102,13 +141,30 @@ export default async function PlanDetailPage({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-green-400">You are following this plan</p>
+                  <p className="font-medium text-green-400">
+                    {enrollment.status === 'paused'
+                      ? 'This plan is paused'
+                      : nextSession
+                        ? 'You are following this plan'
+                        : 'Program complete!'}
+                  </p>
                   <p className="text-sm text-zinc-400">
-                    Started {enrollment.started_at} · {completedCount}/{totalSessions} sessions
+                    Started {enrollment.started_at} · {completedCount}/
+                    {totalSessions} sessions
                   </p>
                 </div>
-                <span className="text-2xl font-bold text-orange-400">{progressPct}%</span>
+                <span className="text-2xl font-bold text-orange-400">
+                  {progressPct}%
+                </span>
               </div>
+              {nextSession && (
+                <Link
+                  href={`#session-${nextSession.id}`}
+                  className="inline-block rounded-lg bg-orange-600 px-4 py-2"
+                >
+                  Continue: {nextSession.title}
+                </Link>
+              )}
               <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
                 <div
                   className="h-full bg-orange-500 transition-all"
@@ -124,7 +180,10 @@ export default async function PlanDetailPage({
           )
         ) : (
           <p className="text-center text-zinc-400">
-            <Link href="/auth/login" className="text-orange-400 hover:underline">
+            <Link
+              href="/auth/login"
+              className="text-orange-400 hover:underline"
+            >
               Log in
             </Link>{' '}
             to follow this plan and track your progress.
@@ -147,15 +206,20 @@ export default async function PlanDetailPage({
               <div className="space-y-3">
                 {weeks[weekNum]!.map((session) => {
                   const isDone = completedSessionIds.has(session.id)
-                  const result = planResults.find((r) => r.session_id === session.id)
+                  const result = planResults.find(
+                    (r) => r.session_id === session.id,
+                  )
 
                   return (
                     <div
+                      id={`session-${session.id}`}
                       key={session.id}
-                      className={`rounded-xl border p-5 ${
+                      className={`scroll-mt-24 rounded-xl border p-5 ${
                         isDone
                           ? 'border-green-800/50 bg-green-950/20'
-                          : 'border-zinc-800 bg-zinc-900/50'
+                          : nextSession?.id === session.id && enrollment
+                            ? 'border-orange-500 bg-zinc-900/50'
+                            : 'border-zinc-800 bg-zinc-900/50'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -175,7 +239,9 @@ export default async function PlanDetailPage({
                               </span>
                             )}
                           </div>
-                          <h4 className="mt-1 font-semibold text-white">{session.title}</h4>
+                          <h4 className="mt-1 font-semibold text-white">
+                            {session.title}
+                          </h4>
                         </div>
                         {session.estimated_minutes && (
                           <span className="text-sm text-zinc-400 shrink-0">
@@ -190,31 +256,59 @@ export default async function PlanDetailPage({
                         </div>
                       )}
 
+                      {user && !isDone && (
+                        <PersonalizedTargets
+                          rules={session.prescriptions || []}
+                          records={records}
+                          logs={exerciseLogs}
+                        />
+                      )}
+                      {isDone && result && (
+                        <div className="mt-3 space-y-1 text-sm text-zinc-300">
+                          {exerciseLogs
+                            .filter((l) => l.result_id === result.id)
+                            .map((l) => (
+                              <p key={l.id}>
+                                {l.label} · {l.sets} × {l.reps} ·{' '}
+                                {l.unit === 'seconds'
+                                  ? timeText(Number(l.value))
+                                  : `${l.value} ${l.unit}`}{' '}
+                                · {l.outcome}
+                              </p>
+                            ))}
+                        </div>
+                      )}
+
                       {session.notes && (
-                        <p className="mt-2 text-xs text-zinc-500">{session.notes}</p>
+                        <p className="mt-2 text-xs text-zinc-500">
+                          {session.notes}
+                        </p>
                       )}
 
                       {/* Log result if enrolled and not rest day */}
-                      {enrollment && session.session_type !== 'rest' && (
+                      {enrollment && enrollment.status !== 'paused' && (
                         <div className="mt-4 border-t border-zinc-800 pt-4">
                           {isDone && result ? (
                             <div className="text-sm text-zinc-400">
                               Logged:{' '}
                               <span className="font-mono text-orange-400">
-                                {result.completion_time_seconds
+                                {result.completion_time_seconds != null
                                   ? formatTime(result.completion_time_seconds)
                                   : result.rounds != null
-                                  ? `${result.rounds} + ${result.extra_reps || 0}`
-                                  : 'Done'}
+                                    ? `${result.rounds} + ${result.extra_reps || 0}`
+                                    : 'Done'}
                               </span>
                               {result.weight_used && (
-                                <span className="ml-2">· {result.weight_used}</span>
+                                <span className="ml-2">
+                                  · {result.weight_used}
+                                </span>
                               )}
                             </div>
                           ) : (
                             <LogPlanResultForm
                               enrollmentId={enrollment.id}
                               sessionId={session.id}
+                              rules={session.prescriptions || []}
                             />
                           )}
                         </div>

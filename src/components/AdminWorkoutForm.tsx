@@ -1,5 +1,7 @@
 'use client'
 
+import { PrescriptionEditor } from '@/components/PrescriptionEditor'
+import { validatePrescriptions, type Prescription } from '@/lib/training'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -19,6 +21,7 @@ export function AdminWorkoutForm() {
   const [workoutType, setWorkoutType] = useState('for_time')
   const [timeCap, setTimeCap] = useState('')
   const [notes, setNotes] = useState('')
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [existingId, setExistingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -30,13 +33,19 @@ export function AdminWorkoutForm() {
         .single()
 
       if (data) {
+        setPrescriptions(data.prescriptions || [])
         setExistingId(data.id)
         setTitle(data.title)
         setDescription(data.description || '')
         setWorkoutType(data.workout_type)
-        setTimeCap(data.time_cap_seconds ? String(Math.floor(data.time_cap_seconds / 60)) : '')
+        setTimeCap(
+          data.time_cap_seconds
+            ? String(Math.floor(data.time_cap_seconds / 60))
+            : '',
+        )
         setNotes(data.notes || '')
       } else {
+        setPrescriptions([])
         setExistingId(null)
         setTitle('')
         setDescription('')
@@ -54,14 +63,27 @@ export function AdminWorkoutForm() {
     setError(null)
     setMessage(null)
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) {
       setError('Not authenticated')
       setLoading(false)
       return
     }
 
+    const invalid =
+      validatePrescriptions(prescriptions) ||
+      (prescriptions.some((r) => r.strategy === 'previous')
+        ? 'Daily WOD targets use percentages. Performance progression is available within programs.'
+        : null)
+    if (invalid) {
+      setError(invalid)
+      setLoading(false)
+      return
+    }
     const payload = {
+      prescriptions,
       title,
       description,
       workout_date: workoutDate,
@@ -73,7 +95,10 @@ export function AdminWorkoutForm() {
 
     let result
     if (existingId) {
-      result = await supabase.from('workouts').update(payload).eq('id', existingId)
+      result = await supabase
+        .from('workouts')
+        .update(payload)
+        .eq('id', existingId)
     } else {
       result = await supabase.from('workouts').insert(payload)
     }
@@ -90,10 +115,15 @@ export function AdminWorkoutForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6"
+    >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">Date</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">
+            Date
+          </label>
           <input
             type="date"
             value={workoutDate}
@@ -102,7 +132,9 @@ export function AdminWorkoutForm() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">Type</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">
+            Type
+          </label>
           <select
             value={workoutType}
             onChange={(e) => setWorkoutType(e.target.value)}
@@ -118,7 +150,9 @@ export function AdminWorkoutForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-zinc-300 mb-1">Title</label>
+        <label className="block text-sm font-medium text-zinc-300 mb-1">
+          Title
+        </label>
         <input
           type="text"
           value={title}
@@ -130,7 +164,9 @@ export function AdminWorkoutForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-zinc-300 mb-1">Description (the actual WOD)</label>
+        <label className="block text-sm font-medium text-zinc-300 mb-1">
+          Description (the actual WOD)
+        </label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -143,7 +179,9 @@ export function AdminWorkoutForm() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">Time Cap (minutes, optional)</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">
+            Time Cap (minutes, optional)
+          </label>
           <input
             type="number"
             value={timeCap}
@@ -153,7 +191,9 @@ export function AdminWorkoutForm() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">Notes</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">
+            Notes
+          </label>
           <input
             type="text"
             value={notes}
@@ -163,6 +203,12 @@ export function AdminWorkoutForm() {
           />
         </div>
       </div>
+
+      <PrescriptionEditor
+        allowPrevious={false}
+        value={prescriptions}
+        onChange={setPrescriptions}
+      />
 
       {error && <p className="text-sm text-red-400">{error}</p>}
       {message && <p className="text-sm text-green-400">{message}</p>}

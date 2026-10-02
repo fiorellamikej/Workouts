@@ -14,17 +14,17 @@ export function EnrollButton({ planId }: { planId: string }) {
     setLoading(true)
     setError(null)
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) {
       setError('You must be logged in')
       setLoading(false)
       return
     }
 
-    const { error } = await supabase.from('user_plan_enrollments').insert({
-      user_id: user.id,
-      plan_id: planId,
-      status: 'active',
+    const { error } = await supabase.rpc('enroll_training_plan', {
+      p_plan: planId,
     })
 
     if (error) {

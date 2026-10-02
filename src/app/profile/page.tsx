@@ -1,3 +1,6 @@
+import { PersonalRecords } from '@/components/PersonalRecords'
+import { ContinuePlans } from '@/components/ContinuePlans'
+import type { AthleteRecord } from '@/lib/training'
 import type { ResultWithWorkout } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatTime } from '@/lib/utils'
@@ -6,7 +9,9 @@ import Link from 'next/link'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user) redirect('/auth/login')
 
@@ -18,14 +23,24 @@ export default async function ProfilePage() {
 
   const { data: results } = await supabase
     .from('results')
-    .select(`
+    .select(
+      `
       *,
       workouts (title, workout_date, workout_type)
-    `)
+    `,
+    )
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(20)
     .returns<ResultWithWorkout[]>()
+
+  const { data: records, error: recordsError } = await supabase
+    .from('athlete_records')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('achieved_at', { ascending: false })
+    .order('created_at', { ascending: false })
+    .returns<AthleteRecord[]>()
 
   return (
     <div className="space-y-8">
@@ -40,6 +55,15 @@ export default async function ProfilePage() {
           </span>
         )}
       </div>
+
+      <ContinuePlans userId={user.id} />
+      {recordsError ? (
+        <p role="alert" className="text-red-400">
+          Could not load records. Check that the database migration was applied.
+        </p>
+      ) : (
+        <PersonalRecords records={records || []} />
+      )}
 
       <section>
         <h2 className="text-xl font-semibold mb-4">Your Recent Results</h2>

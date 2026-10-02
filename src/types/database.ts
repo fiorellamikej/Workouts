@@ -1,3 +1,5 @@
+import type { Prescription } from '@/lib/training'
+
 export type Profile = {
   id: string
   email: string | null
@@ -20,6 +22,7 @@ export type Exercise = {
 }
 
 export type Workout = {
+  prescriptions: Prescription[]
   id: string
   title: string
   description: string | null
@@ -81,6 +84,7 @@ export type TrainingPlan = {
 }
 
 export type PlanSession = {
+  prescriptions: Prescription[]
   id: string
   plan_id: string
   week_number: number
@@ -132,6 +136,9 @@ export type ResultWithWorkout = Omit<Result, 'workouts'> & {
   workouts: Pick<Workout, 'title' | 'workout_date' | 'workout_type'> | null
 }
 
-export type ActivePlanEnrollment = Pick<UserPlanEnrollment, 'id' | 'status' | 'started_at'> & {
+export type ActivePlanEnrollment = Pick<
+  UserPlanEnrollment,
+  'id' | 'status' | 'started_at'
+> & {
   training_plans: Pick<TrainingPlan, 'id' | 'title' | 'duration_weeks'> | null
 }

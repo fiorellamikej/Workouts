@@ -1,4 +1,6 @@
 'use client'
+import { PrescriptionEditor } from '@/components/PrescriptionEditor'
+import { validatePrescriptions, type Prescription } from '@/lib/training'
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -16,6 +18,7 @@ type Plan = {
 } | null
 
 type Session = {
+  prescriptions: Prescription[]
   id: string
   week_number: number
   day_number: number
@@ -42,18 +45,25 @@ export function AdminPlanManager({
 
   // Plan fields
   const [title, setTitle] = useState(existingPlan?.title || '')
-  const [description, setDescription] = useState(existingPlan?.description || '')
+  const [description, setDescription] = useState(
+    existingPlan?.description || '',
+  )
   const [goal, setGoal] = useState(existingPlan?.goal || '')
   const [durationWeeks, setDurationWeeks] = useState(
-    existingPlan?.duration_weeks?.toString() || '4'
+    existingPlan?.duration_weeks?.toString() || '4',
   )
-  const [difficulty, setDifficulty] = useState(existingPlan?.difficulty || 'intermediate')
+  const [difficulty, setDifficulty] = useState(
+    existingPlan?.difficulty || 'intermediate',
+  )
   const [tags, setTags] = useState(existingPlan?.tags?.join(', ') || '')
-  const [isPublished, setIsPublished] = useState(existingPlan?.is_published ?? true)
+  const [isPublished, setIsPublished] = useState(
+    existingPlan?.is_published ?? true,
+  )
 
   // Sessions
   const [sessions, setSessions] = useState<
     {
+      prescriptions: Prescription[]
       id?: string
       week_number: number
       day_number: number
@@ -66,6 +76,7 @@ export function AdminPlanManager({
     }[]
   >(
     existingSessions.map((s, i) => ({
+      prescriptions: s.prescriptions || [],
       id: s.id,
       week_number: s.week_number,
       day_number: s.day_number,
@@ -75,7 +86,7 @@ export function AdminPlanManager({
       estimated_minutes: s.estimated_minutes?.toString() || '',
       notes: s.notes || '',
       order_index: s.order_index ?? i,
-    }))
+    })),
   )
 
   const addSession = () => {
@@ -87,6 +98,7 @@ export function AdminPlanManager({
       {
         week_number: nextDay > 7 ? nextWeek + 1 : nextWeek,
         day_number: nextDay > 7 ? 1 : nextDay,
+        prescriptions: [],
         title: '',
         description: '',
         session_type: 'workout',
@@ -97,7 +109,11 @@ export function AdminPlanManager({
     ])
   }
 
-  const updateSession = (index: number, field: string, value: string | number) => {
+  const updateSession = (
+    index: number,
+    field: string,
+    value: string | number | Prescription[],
+  ) => {
     const updated = [...sessions]
     updated[index] = { ...updated[index], [field]: value }
     setSessions(updated)
@@ -113,7 +129,9 @@ export function AdminPlanManager({
     setError(null)
     setMessage(null)
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) {
       setError('Not authenticated')
       setLoading(false)
@@ -136,55 +154,40 @@ export function AdminPlanManager({
       created_by: user.id,
     }
 
-    let planId = existingPlan?.id
-
-    if (planId) {
-      const { error } = await supabase
-        .from('training_plans')
-        .update(planPayload)
-        .eq('id', planId)
-      if (error) {
-        setError(error.message)
+    for (const session of sessions) {
+      const invalid = validatePrescriptions(session.prescriptions)
+      if (invalid) {
+        setError(invalid)
         setLoading(false)
         return
       }
-    } else {
-      const { data, error } = await supabase
-        .from('training_plans')
-        .insert(planPayload)
-        .select('id')
-        .single()
-      if (error || !data) {
-        setError(error?.message || 'Failed to create plan')
-        setLoading(false)
-        return
-      }
-      planId = data.id
     }
-
-    // Upsert sessions: delete old ones not in the list, then upsert
-    // Simple approach: delete all existing sessions for this plan, then insert current ones
-    await supabase.from('plan_sessions').delete().eq('plan_id', planId)
-
-    if (sessions.length > 0) {
-      const sessionRows = sessions.map((s, i) => ({
-        plan_id: planId,
-        week_number: s.week_number,
-        day_number: s.day_number,
-        title: s.title || `Session ${i + 1}`,
-        description: s.description || null,
-        session_type: s.session_type,
-        estimated_minutes: s.estimated_minutes ? parseInt(s.estimated_minutes) : null,
-        notes: s.notes || null,
-        order_index: i,
-      }))
-
-      const { error: sessError } = await supabase.from('plan_sessions').insert(sessionRows)
-      if (sessError) {
-        setError(sessError.message)
-        setLoading(false)
-        return
-      }
+    const sessionRows = sessions.map((s, i) => ({
+      id: s.id || null,
+      week_number: s.week_number,
+      day_number: s.day_number,
+      title: s.title || `Session ${i + 1}`,
+      description: s.description || null,
+      session_type: s.session_type,
+      estimated_minutes: s.estimated_minutes
+        ? parseInt(s.estimated_minutes)
+        : null,
+      notes: s.notes || null,
+      order_index: i,
+      prescriptions: s.prescriptions,
+    }))
+    const { data: planId, error: saveError } = await supabase.rpc(
+      'save_training_program',
+      {
+        p_plan_id: existingPlan?.id || null,
+        p_plan: { ...planPayload, tags: tagList },
+        p_sessions: sessionRows,
+      },
+    )
+    if (saveError) {
+      setError(saveError.message)
+      setLoading(false)
+      return
     }
 
     setMessage(existingPlan ? 'Plan updated!' : 'Plan created!')
@@ -200,7 +203,9 @@ export function AdminPlanManager({
         <h2 className="text-lg font-semibold">Plan Details</h2>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">Title *</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">
+            Title *
+          </label>
           <input
             type="text"
             value={title}
@@ -212,7 +217,9 @@ export function AdminPlanManager({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">Goal / Tagline</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">
+            Goal / Tagline
+          </label>
           <input
             type="text"
             value={goal}
@@ -223,7 +230,9 @@ export function AdminPlanManager({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">Description</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">
+            Description
+          </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -235,7 +244,9 @@ export function AdminPlanManager({
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Duration (weeks)</label>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">
+              Duration (weeks)
+            </label>
             <input
               type="number"
               value={durationWeeks}
@@ -245,7 +256,9 @@ export function AdminPlanManager({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Difficulty</label>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">
+              Difficulty
+            </label>
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value)}
@@ -257,7 +270,9 @@ export function AdminPlanManager({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Tags (comma sep.)</label>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">
+              Tags (comma sep.)
+            </label>
             <input
               type="text"
               value={tags}
@@ -282,7 +297,9 @@ export function AdminPlanManager({
       {/* Sessions */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Sessions ({sessions.length})</h2>
+          <h2 className="text-lg font-semibold">
+            Sessions ({sessions.length})
+          </h2>
           <button
             type="button"
             onClick={addSession}
@@ -305,7 +322,9 @@ export function AdminPlanManager({
               className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 space-y-3"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono text-zinc-500">Session {i + 1}</span>
+                <span className="text-xs font-mono text-zinc-500">
+                  Session {i + 1}
+                </span>
                 <button
                   type="button"
                   onClick={() => removeSession(i)}
@@ -317,31 +336,51 @@ export function AdminPlanManager({
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1">Week</label>
+                  <label className="block text-xs text-zinc-400 mb-1">
+                    Week
+                  </label>
                   <input
                     type="number"
                     value={s.week_number}
-                    onChange={(e) => updateSession(i, 'week_number', parseInt(e.target.value) || 1)}
+                    onChange={(e) =>
+                      updateSession(
+                        i,
+                        'week_number',
+                        parseInt(e.target.value) || 1,
+                      )
+                    }
                     min={1}
                     className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-sm text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1">Day</label>
+                  <label className="block text-xs text-zinc-400 mb-1">
+                    Day
+                  </label>
                   <input
                     type="number"
                     value={s.day_number}
-                    onChange={(e) => updateSession(i, 'day_number', parseInt(e.target.value) || 1)}
+                    onChange={(e) =>
+                      updateSession(
+                        i,
+                        'day_number',
+                        parseInt(e.target.value) || 1,
+                      )
+                    }
                     min={1}
                     max={7}
                     className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-sm text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1">Type</label>
+                  <label className="block text-xs text-zinc-400 mb-1">
+                    Type
+                  </label>
                   <select
                     value={s.session_type}
-                    onChange={(e) => updateSession(i, 'session_type', e.target.value)}
+                    onChange={(e) =>
+                      updateSession(i, 'session_type', e.target.value)
+                    }
                     className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-sm text-white"
                   >
                     <option value="workout">Workout</option>
@@ -351,11 +390,15 @@ export function AdminPlanManager({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1">Est. Minutes</label>
+                  <label className="block text-xs text-zinc-400 mb-1">
+                    Est. Minutes
+                  </label>
                   <input
                     type="number"
                     value={s.estimated_minutes}
-                    onChange={(e) => updateSession(i, 'estimated_minutes', e.target.value)}
+                    onChange={(e) =>
+                      updateSession(i, 'estimated_minutes', e.target.value)
+                    }
                     className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-sm text-white"
                     placeholder="45"
                   />
@@ -363,7 +406,9 @@ export function AdminPlanManager({
               </div>
 
               <div>
-                <label className="block text-xs text-zinc-400 mb-1">Title</label>
+                <label className="block text-xs text-zinc-400 mb-1">
+                  Title
+                </label>
                 <input
                   type="text"
                   value={s.title}
@@ -374,18 +419,29 @@ export function AdminPlanManager({
               </div>
 
               <div>
-                <label className="block text-xs text-zinc-400 mb-1">Workout Content</label>
+                <label className="block text-xs text-zinc-400 mb-1">
+                  Workout Content
+                </label>
                 <textarea
                   value={s.description}
-                  onChange={(e) => updateSession(i, 'description', e.target.value)}
+                  onChange={(e) =>
+                    updateSession(i, 'description', e.target.value)
+                  }
                   rows={4}
                   className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-sm text-white font-mono"
                   placeholder={`A. Back Squat 5x5\nB. Romanian DL 3x8\nC. 3 rounds:\n  - 15 KB Swings\n  - 10 Push-ups`}
                 />
               </div>
 
+              <PrescriptionEditor
+                value={s.prescriptions}
+                onChange={(value) => updateSession(i, 'prescriptions', value)}
+              />
+
               <div>
-                <label className="block text-xs text-zinc-400 mb-1">Notes (optional)</label>
+                <label className="block text-xs text-zinc-400 mb-1">
+                  Notes (optional)
+                </label>
                 <input
                   type="text"
                   value={s.notes}
