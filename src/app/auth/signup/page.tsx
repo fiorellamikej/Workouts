@@ -54,13 +54,24 @@ export default function SignupPage() {
   return (
     <div className="mx-auto max-w-md">
       <h1 className="text-2xl font-bold mb-6">Create account</h1>
-      <form onSubmit={handleSignup} className="space-y-4">
+      <form
+        id="signup-form"
+        autoComplete="on"
+        onSubmit={handleSignup}
+        className="space-y-4"
+      >
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">
+          <label
+            htmlFor="signup-display-name"
+            className="block text-sm font-medium text-zinc-300 mb-1"
+          >
             Display Name
           </label>
           <input
+            id="signup-display-name"
+            name="display_name"
             type="text"
+            autoComplete="nickname"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             required
@@ -70,11 +81,19 @@ export default function SignupPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">
+          <label
+            htmlFor="signup-email"
+            className="block text-sm font-medium text-zinc-300 mb-1"
+          >
             Email
           </label>
           <input
+            id="signup-email"
+            name="email"
             type="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -82,10 +101,15 @@ export default function SignupPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">
+          <label
+            htmlFor="new-password"
+            className="block text-sm font-medium text-zinc-300 mb-1"
+          >
             Password
           </label>
           <input
+            id="new-password"
+            name="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

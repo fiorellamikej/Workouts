@@ -1,17 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
+  const submitting = useRef(false);
+  const [supabase] = useState(() => createClient());
 
   useEffect(() => {
     if (
@@ -23,8 +20,19 @@ export default function LoginPage() {
       );
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitting.current) return;
+    // Read the actual inputs, including values filled by a password manager.
+    const fields = new FormData(e.currentTarget);
+    const email = String(fields.get("email") || "").trim();
+    const password = String(fields.get("password") || "");
+    if (!email || !password) {
+      setError("Enter your email and password.");
+      return;
+    }
+    submitting.current = true;
+    let navigating = false;
     setLoading(true);
     setError(null);
 
@@ -37,44 +45,70 @@ export default function LoginPage() {
         setError(error.message);
         return;
       }
-      router.push("/");
-      router.refresh();
+      // A fresh navigation reads the newly written session cookies and avoids
+      // both the intro screen and previously cached signed-out page content.
+      window.location.replace("/dashboard");
+      navigating = true;
     } catch {
       setError("Could not log in. Check your connection and try again.");
     } finally {
-      setLoading(false);
+      if (!navigating) {
+        submitting.current = false;
+        setLoading(false);
+      }
     }
   };
 
   return (
     <div className="mx-auto max-w-md">
       <h1 className="text-2xl font-bold mb-6">Log in</h1>
-      <form onSubmit={handleLogin} className="space-y-4">
+      <form
+        id="login-form"
+        method="post"
+        autoComplete="on"
+        onSubmit={handleLogin}
+        className="space-y-4"
+      >
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">
+          <label
+            htmlFor="login-email"
+            className="block text-sm font-medium text-zinc-300 mb-1"
+          >
             Email
           </label>
           <input
+            id="login-email"
+            name="email"
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            inputMode="email"
             required
             className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-orange-500 focus:outline-none"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">
+          <label
+            htmlFor="current-password"
+            className="block text-sm font-medium text-zinc-300 mb-1"
+          >
             Password
           </label>
           <input
+            id="current-password"
+            name="password"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
             required
             className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-orange-500 focus:outline-none"
           />
         </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-red-400">
+            {error}
+          </p>
+        )}
         <button
           type="submit"
           disabled={loading}
