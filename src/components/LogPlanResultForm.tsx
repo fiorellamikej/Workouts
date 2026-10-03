@@ -1,15 +1,22 @@
-'use client'
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import type { PlanResult } from '@/types/database'
+"use client";
+import { useState } from "react";
+import { ExerciseSetLogger } from "./ExerciseSetLogger";
+import {
+  entriesForSave,
+  validateEntries,
+  type ExerciseEntry,
+  type ExerciseDefinition,
+} from "@/lib/exercise-logging";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import type { PlanResult } from "@/types/database";
 import {
   RECORDS,
   parseDuration,
   timeText,
   type ExerciseLog,
   type Prescription,
-} from '@/lib/training'
+} from "@/lib/training";
 export function LogPlanResultForm({
   enrollmentId,
   sessionId,
@@ -18,69 +25,78 @@ export function LogPlanResultForm({
   existing,
   existingLogs = [],
   planId,
+  exercises = [],
 }: {
-  enrollmentId: string
-  sessionId: string
-  rules?: Prescription[]
-  attempt: number
-  existing?: PlanResult
-  existingLogs?: ExerciseLog[]
-  planId?: string
+  enrollmentId: string;
+  sessionId: string;
+  rules?: Prescription[];
+  attempt: number;
+  existing?: PlanResult;
+  existingLogs?: ExerciseLog[];
+  planId?: string;
+  exercises?: ExerciseDefinition[];
 }) {
+  const [entries, setEntries] = useState<ExerciseEntry[]>([]);
   const [open, setOpen] = useState(false),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState('')
-  const [mode, setMode] = useState<'just_done' | 'time' | 'amrap'>('just_done')
-  const [time, setTime] = useState(''),
-    [rounds, setRounds] = useState(''),
-    [extra, setExtra] = useState(''),
-    [weight, setWeight] = useState(''),
-    [notes, setNotes] = useState(''),
-    [rx, setRx] = useState(false)
+    [error, setError] = useState("");
+  const [mode, setMode] = useState<"just_done" | "time" | "amrap">("just_done");
+  const [time, setTime] = useState(""),
+    [rounds, setRounds] = useState(""),
+    [extra, setExtra] = useState(""),
+    [weight, setWeight] = useState(""),
+    [notes, setNotes] = useState(""),
+    [rx, setRx] = useState(false);
   const [logs, setLogs] = useState<
     Record<
       string,
-      { value: string; outcome: 'comfortable' | 'hard' | 'missed' }
+      { value: string; outcome: "comfortable" | "hard" | "missed" }
     >
-  >({})
+  >({});
   const router = useRouter(),
-    field = 'w-full rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-sm'
+    field = "w-full rounded-lg border border-zinc-700 bg-zinc-800 p-3 text-sm";
   async function save(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    const seconds = mode === 'time' ? parseDuration(time) : null
-    if (mode === 'time' && !seconds) {
-      setError('Enter time as mm:ss, such as 12:30.')
-      return
+    e.preventDefault();
+    setError("");
+    const savedEntries = entriesForSave(entries);
+    const invalidEntries = validateEntries(savedEntries);
+    if (invalidEntries) {
+      setError(invalidEntries);
+      return;
+    }
+    const seconds = mode === "time" ? parseDuration(time) : null;
+    if (mode === "time" && !seconds) {
+      setError("Enter time as mm:ss, such as 12:30.");
+      return;
     }
     if (
-      mode === 'amrap' &&
-      (!/^\d+$/.test(rounds) || (extra !== '' && !/^\d+$/.test(extra)))
+      mode === "amrap" &&
+      (!/^\d+$/.test(rounds) || (extra !== "" && !/^\d+$/.test(extra)))
     ) {
-      setError('Enter whole, nonnegative rounds and extra reps.')
-      return
+      setError("Enter whole, nonnegative rounds and extra reps.");
+      return;
     }
-    const exerciseLogs = []
+    const exerciseLogs = [];
     for (const r of rules) {
-      const entry = logs[r.id]
-      if (!entry?.value.trim()) continue
-      const timed = RECORDS[r.record_key].kind === 'time'
-      const parsed = timed ? parseDuration(entry.value) : Number(entry.value)
+      const entry = logs[r.id];
+      if (!entry?.value.trim()) continue;
+      const timed = RECORDS[r.record_key].kind === "time";
+      const parsed = timed ? parseDuration(entry.value) : Number(entry.value);
       if (!parsed || !Number.isFinite(parsed) || parsed <= 0) {
-        setError(`Check the result for ${r.label}.`)
-        return
+        setError(`Check the result for ${r.label}.`);
+        return;
       }
       exerciseLogs.push({
         prescription_id: r.id,
         value: parsed,
-        unit: timed ? 'seconds' : r.unit,
+        unit: timed ? "seconds" : r.unit,
         outcome: entry.outcome,
-      })
+      });
     }
-    setBusy(true)
+    setBusy(true);
     try {
       const { data: savedId, error } = await createClient().rpc(
-        'save_training_session_result',
+        "save_training_session_result",
         {
           p_enrollment: enrollmentId,
           p_session: sessionId,
@@ -88,27 +104,28 @@ export function LogPlanResultForm({
           p_result_id: existing?.id || null,
           p_result: {
             completion_time_seconds: seconds,
-            rounds: mode === 'amrap' ? Number(rounds) : null,
-            extra_reps: mode === 'amrap' ? Number(extra || 0) : null,
+            rounds: mode === "amrap" ? Number(rounds) : null,
+            extra_reps: mode === "amrap" ? Number(extra || 0) : null,
             weight_used: weight || null,
             is_rx: rx,
             notes: notes || null,
+            exercise_entries: savedEntries,
           },
           p_logs: exerciseLogs,
         },
-      )
-      if (error) throw error
-      setOpen(false)
+      );
+      if (error) throw error;
+      setOpen(false);
       if (!existing && planId && savedId)
         router.replace(
           `/plans/${planId}?day=${sessionId}&celebrate=${savedId}`,
           { scroll: true },
-        )
-      else router.refresh()
+        );
+      else router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save workout.')
+      setError(e instanceof Error ? e.message : "Could not save workout.");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
   if (!open)
@@ -117,45 +134,76 @@ export function LogPlanResultForm({
         onClick={() => {
           setMode(
             existing?.completion_time_seconds != null
-              ? 'time'
+              ? "time"
               : existing?.rounds != null
-                ? 'amrap'
-                : 'just_done',
-          )
+                ? "amrap"
+                : "just_done",
+          );
           setTime(
             existing?.completion_time_seconds != null
               ? timeText(existing.completion_time_seconds)
-              : '',
-          )
-          setRounds(existing?.rounds != null ? String(existing.rounds) : '')
+              : "",
+          );
+          setRounds(existing?.rounds != null ? String(existing.rounds) : "");
           setExtra(
-            existing?.extra_reps != null ? String(existing.extra_reps) : '',
-          )
-          setWeight(existing?.weight_used || '')
-          setNotes(existing?.notes || '')
-          setRx(existing?.is_rx || false)
+            existing?.extra_reps != null ? String(existing.extra_reps) : "",
+          );
+          setWeight(existing?.weight_used || "");
+          setNotes(existing?.notes || "");
+          setRx(existing?.is_rx || false);
           setLogs(
             Object.fromEntries(
               existingLogs.map((l) => [
                 l.prescription_id,
                 {
                   value:
-                    l.unit === 'seconds'
+                    l.unit === "seconds"
                       ? timeText(Number(l.value))
                       : String(l.value),
                   outcome: l.outcome,
                 },
               ]),
             ),
-          )
-          setError('')
-          setOpen(true)
+          );
+          const definitions = exercises.length
+            ? exercises
+            : rules
+                .filter((r) => RECORDS[r.record_key].kind === "weight")
+                .map((r) => ({
+                  id: r.id,
+                  label: r.label,
+                  sets: r.sets,
+                  reps: r.reps,
+                }));
+          setEntries(
+            existing?.exercise_entries?.length
+              ? structuredClone(existing.exercise_entries)
+              : definitions.map((d) => ({
+                  id: d.id,
+                  label: d.label,
+                  unit:
+                    rules.find(
+                      (r) =>
+                        r.id === d.id ||
+                        r.label.trim().toLowerCase() ===
+                          d.label.trim().toLowerCase(),
+                    )?.unit || "lb",
+                  sets: Array.from({ length: d.sets }, () => ({
+                    reps: null,
+                    weight: null,
+                    rpe: null,
+                    completed: false,
+                  })),
+                })),
+          );
+          setError("");
+          setOpen(true);
         }}
         className="rounded-lg bg-orange-600 px-4 py-2 text-sm"
       >
-        {existing ? 'Edit Result' : 'Complete Workout / Log Results'}
+        {existing ? "Edit Result" : "Complete Workout / Log Results"}
       </button>
-    )
+    );
   return (
     <form onSubmit={save} className="space-y-3">
       <label className="block text-sm">
@@ -170,7 +218,7 @@ export function LogPlanResultForm({
           <option value="amrap">Rounds + reps</option>
         </select>
       </label>
-      {mode === 'time' && (
+      {mode === "time" && (
         <label className="block text-sm">
           Finish time (mm:ss)
           <input
@@ -182,7 +230,7 @@ export function LogPlanResultForm({
           />
         </label>
       )}
-      {mode === 'amrap' && (
+      {mode === "amrap" && (
         <div className="grid grid-cols-2 gap-2">
           <label className="text-sm">
             Rounds
@@ -209,6 +257,12 @@ export function LogPlanResultForm({
           </label>
         </div>
       )}
+      <ExerciseSetLogger
+        entries={entries}
+        onChange={setEntries}
+        excludeResultId={existing?.id}
+        disabled={busy}
+      />
       {rules.length > 0 && (
         <p className="text-xs text-zinc-400">
           Optional exercise results drive the next suggested load. Enter the
@@ -217,16 +271,16 @@ export function LogPlanResultForm({
         </p>
       )}
       {rules.map((r) => {
-        const entry = logs[r.id] || { value: '', outcome: 'hard' as const },
-          timed = RECORDS[r.record_key].kind === 'time'
+        const entry = logs[r.id] || { value: "", outcome: "hard" as const },
+          timed = RECORDS[r.record_key].kind === "time";
         return (
           <div
             key={r.id}
             className="space-y-2 rounded-lg border border-zinc-700 p-3"
           >
             <label className="block text-sm">
-              {r.label} · {r.sets} × {r.reps} · Actual{' '}
-              {timed ? 'time (mm:ss)' : `weight (${r.unit})`}
+              {r.label} · {r.sets} × {r.reps} · Actual{" "}
+              {timed ? "time (mm:ss)" : `weight (${r.unit})`}
               <input
                 className={field}
                 value={entry.value}
@@ -236,7 +290,7 @@ export function LogPlanResultForm({
                     [r.id]: { ...entry, value: e.target.value },
                   })
                 }
-                placeholder={timed ? '7:30' : 'Actual weight'}
+                placeholder={timed ? "7:30" : "Actual weight"}
               />
             </label>
             <label className="block text-sm">
@@ -271,7 +325,7 @@ export function LogPlanResultForm({
               reps.
             </p>
           </div>
-        )
+        );
       })}
       <label className="block text-sm">
         Other weights / scaling notes
@@ -309,10 +363,10 @@ export function LogPlanResultForm({
           className="rounded-lg bg-orange-600 px-4 py-2 disabled:opacity-50"
         >
           {busy
-            ? 'Saving…'
+            ? "Saving…"
             : existing
-              ? 'Save Corrections'
-              : 'Save & Mark Completed'}
+              ? "Save Corrections"
+              : "Save & Mark Completed"}
         </button>
         <button
           type="button"
@@ -324,5 +378,5 @@ export function LogPlanResultForm({
         </button>
       </div>
     </form>
-  )
+  );
 }

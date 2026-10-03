@@ -1,90 +1,111 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { formatTime, parseTimeInput } from '@/lib/utils'
+import { useState } from "react";
+import { ExerciseSetLogger } from "./ExerciseSetLogger";
+import {
+  entriesForSave,
+  validateEntries,
+  type ExerciseEntry,
+} from "@/lib/exercise-logging";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import { formatTime, parseTimeInput } from "@/lib/utils";
 
 type Props = {
-  workoutId: string
-  workoutType: string
+  workoutId: string;
+  workoutType: string;
   existing?: {
-    id: string
-    completion_time_seconds: number | null
-    rounds: number | null
-    extra_reps: number | null
-    weight_used: string | null
-    is_rx: boolean
-    notes: string | null
-  } | null
-}
+    id: string;
+    completion_time_seconds: number | null;
+    rounds: number | null;
+    extra_reps: number | null;
+    weight_used: string | null;
+    is_rx: boolean;
+    exercise_entries?: ExerciseEntry[];
+    notes: string | null;
+  } | null;
+};
 
 export function LogResultForm({ workoutId, workoutType, existing }: Props) {
-  const router = useRouter()
-  const supabase = createClient()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [entries, setEntries] = useState<ExerciseEntry[]>(
+    existing?.exercise_entries || [],
+  );
+  const router = useRouter();
+  const supabase = createClient();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [timeInput, setTimeInput] = useState(
     existing?.completion_time_seconds
       ? formatTime(existing.completion_time_seconds)
-      : ''
-  )
-  const [rounds, setRounds] = useState(existing?.rounds?.toString() || '')
-  const [extraReps, setExtraReps] = useState(existing?.extra_reps?.toString() || '')
-  const [weightUsed, setWeightUsed] = useState(existing?.weight_used || '')
-  const [isRx, setIsRx] = useState(existing?.is_rx ?? true)
-  const [notes, setNotes] = useState(existing?.notes || '')
+      : "",
+  );
+  const [rounds, setRounds] = useState(existing?.rounds?.toString() || "");
+  const [extraReps, setExtraReps] = useState(
+    existing?.extra_reps?.toString() || "",
+  );
+  const [weightUsed, setWeightUsed] = useState(existing?.weight_used || "");
+  const [isRx, setIsRx] = useState(existing?.is_rx ?? true);
+  const [notes, setNotes] = useState(existing?.notes || "");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+    e.preventDefault();
+    const savedEntries = entriesForSave(entries);
+    const invalid = validateEntries(savedEntries);
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
+    setLoading(true);
+    setError(null);
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
-      setError('You must be logged in')
-      setLoading(false)
-      return
+      setError("You must be logged in");
+      setLoading(false);
+      return;
     }
 
     const payload = {
       user_id: user.id,
       workout_id: workoutId,
-      completion_time_seconds: workoutType === 'amrap' ? null : parseTimeInput(timeInput),
-      rounds: workoutType === 'amrap' ? parseInt(rounds) || null : null,
-      extra_reps: workoutType === 'amrap' ? parseInt(extraReps) || null : null,
+      completion_time_seconds:
+        workoutType === "amrap" ? null : parseTimeInput(timeInput),
+      rounds: workoutType === "amrap" ? parseInt(rounds) || null : null,
+      extra_reps: workoutType === "amrap" ? parseInt(extraReps) || null : null,
       weight_used: weightUsed || null,
       is_rx: isRx,
       notes: notes || null,
-    }
+      exercise_entries: savedEntries,
+    };
 
-    let error
-    if (existing) {
-      ;({ error } = await supabase
-        .from('results')
-        .update(payload)
-        .eq('id', existing.id))
-    } else {
-      ;({ error } = await supabase.from('results').insert(payload))
-    }
+    const { error } = await supabase.rpc("save_wod_exercise_result", {
+      p_workout: workoutId,
+      p_result: payload,
+      p_entries: savedEntries,
+      p_result_id: existing?.id || null,
+    });
 
     if (error) {
-      setError(error.message)
-      setLoading(false)
-      return
+      setError(error.message);
+      setLoading(false);
+      return;
     }
 
-    router.refresh()
-    setLoading(false)
-  }
+    router.refresh();
+    setLoading(false);
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {workoutType === 'amrap' ? (
+      {workoutType === "amrap" ? (
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Rounds</label>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">
+              Rounds
+            </label>
             <input
               type="number"
               value={rounds}
@@ -94,7 +115,9 @@ export function LogResultForm({ workoutId, workoutType, existing }: Props) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Extra Reps</label>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">
+              Extra Reps
+            </label>
             <input
               type="number"
               value={extraReps}
@@ -119,6 +142,12 @@ export function LogResultForm({ workoutId, workoutType, existing }: Props) {
         </div>
       )}
 
+      <ExerciseSetLogger
+        entries={entries}
+        onChange={setEntries}
+        excludeResultId={existing?.id}
+        disabled={loading}
+      />
       <div>
         <label className="block text-sm font-medium text-zinc-300 mb-1">
           Weight Used (optional)
@@ -145,7 +174,9 @@ export function LogResultForm({ workoutId, workoutType, existing }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-zinc-300 mb-1">Notes</label>
+        <label className="block text-sm font-medium text-zinc-300 mb-1">
+          Notes
+        </label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -162,8 +193,8 @@ export function LogResultForm({ workoutId, workoutType, existing }: Props) {
         disabled={loading}
         className="w-full rounded-lg bg-orange-600 px-4 py-2.5 font-medium text-white hover:bg-orange-500 disabled:opacity-50 transition"
       >
-        {loading ? 'Saving...' : existing ? 'Update Result' : 'Log Result'}
+        {loading ? "Saving..." : existing ? "Update Result" : "Log Result"}
       </button>
     </form>
-  )
+  );
 }

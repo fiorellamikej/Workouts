@@ -1,75 +1,75 @@
-'use client'
-import { useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+"use client";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import {
   normalizePlanImport,
   parsePlanImport,
   type PlanImport,
-} from '@/lib/plan-import'
+} from "@/lib/plan-import";
 
 export function PlanImportPanel({ source }: { source?: unknown }) {
-  const router = useRouter()
-  const [preview, setPreview] = useState<PlanImport | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [reviewed, setReviewed] = useState(false)
-  const [saved, setSaved] = useState<string | null>(null)
-  const lock = useRef(false)
-  const field = 'w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2'
+  const router = useRouter();
+  const [preview, setPreview] = useState<PlanImport | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [reviewed, setReviewed] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
+  const lock = useRef(false);
+  const field = "w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2";
   const load = (data: PlanImport) => {
-    setPreview(data)
-    setError(null)
-    setReviewed(false)
-    setSaved(null)
-  }
+    setPreview(data);
+    setError(null);
+    setReviewed(false);
+    setSaved(null);
+  };
   const save = async () => {
-    if (!preview || !reviewed || lock.current || saved) return
-    lock.current = true
-    setBusy(true)
-    setError(null)
+    if (!preview || !reviewed || lock.current || saved) return;
+    lock.current = true;
+    setBusy(true);
+    setError(null);
     try {
-      const checked = normalizePlanImport(preview)
-      const supabase = createClient()
+      const checked = normalizePlanImport(preview);
+      const supabase = createClient();
       const { data: matches, error: lookupError } = await supabase
-        .from('training_plans')
-        .select('id')
-        .eq('title', checked.plan.title)
-        .limit(1)
-      if (lookupError) throw lookupError
+        .from("training_plans")
+        .select("id")
+        .eq("title", checked.plan.title)
+        .limit(1);
+      if (lookupError) throw lookupError;
       if (matches?.length)
         throw new Error(
-          'A plan with this exact title already exists. Rename this draft or edit the existing plan.',
-        )
+          "A plan with this exact title already exists. Rename this draft or edit the existing plan.",
+        );
       const { data: id, error: saveError } = await supabase.rpc(
-        'save_training_program',
+        "save_training_program",
         {
           p_plan_id: null,
           p_plan: checked.plan,
           p_sessions: checked.sessions,
         },
-      )
-      if (saveError) throw saveError
+      );
+      if (saveError) throw saveError;
       if (!id)
         throw new Error(
-          'No plan ID returned. Check All Plans before trying again.',
-        )
-      setSaved(String(id))
-      router.refresh()
+          "No plan ID returned. Check All Plans before trying again.",
+        );
+      setSaved(String(id));
+      router.refresh();
     } catch (e) {
       setError(
         e &&
-          typeof e === 'object' &&
-          'message' in e &&
-          typeof e.message === 'string'
+          typeof e === "object" &&
+          "message" in e &&
+          typeof e.message === "string"
           ? e.message
-          : 'Could not import. Check All Plans before retrying.',
-      )
+          : "Could not import. Check All Plans before retrying.",
+      );
     } finally {
-      lock.current = false
-      setBusy(false)
+      lock.current = false;
+      setBusy(false);
     }
-  }
+  };
   return (
     <section className="space-y-4 rounded-xl border border-orange-800/60 bg-zinc-900/50 p-6">
       <h2 className="text-lg font-semibold">Bulk import a training plan</h2>
@@ -85,22 +85,22 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
           disabled={busy}
           className="mt-2 block w-full text-sm"
           onChange={async (e) => {
-            const file = e.target.files?.[0]
-            if (!file) return
-            setPreview(null)
-            setError(null)
-            setSaved(null)
-            setReviewed(false)
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setPreview(null);
+            setError(null);
+            setSaved(null);
+            setReviewed(false);
             try {
               if (file.size > 5 * 1024 * 1024)
-                throw new Error('File must be smaller than 5 MB.')
-              load(parsePlanImport(await file.text()))
+                throw new Error("File must be smaller than 5 MB.");
+              load(parsePlanImport(await file.text()));
             } catch (err) {
               setError(
-                err instanceof Error ? err.message : 'Unable to read file.',
-              )
+                err instanceof Error ? err.message : "Unable to read file.",
+              );
             }
-            e.target.value = ''
+            e.target.value = "";
           }}
         />
       </label>
@@ -111,13 +111,13 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
           className="text-sm text-orange-400"
           onClick={() => {
             try {
-              const copy = normalizePlanImport(source)
-              copy.plan.title = `${copy.plan.title.slice(0, 190)} (copy)`
-              load(copy)
+              const copy = normalizePlanImport(source);
+              copy.plan.title = `${copy.plan.title.slice(0, 190)} (copy)`;
+              load(copy);
             } catch (err) {
               setError(
-                err instanceof Error ? err.message : 'Unable to copy plan.',
-              )
+                err instanceof Error ? err.message : "Unable to copy plan.",
+              );
             }
           }}
         >
@@ -142,15 +142,15 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
                 setPreview({
                   ...preview,
                   plan: { ...preview.plan, title: e.target.value },
-                })
-                setReviewed(false)
+                });
+                setReviewed(false);
               }}
             />
           </label>
           <p className="text-sm">
-            {preview.plan.duration_weeks} weeks · {preview.sessions.length}{' '}
-            sessions ·{' '}
-            {preview.sessions.reduce((n, s) => n + s.prescriptions.length, 0)}{' '}
+            {preview.plan.duration_weeks} weeks · {preview.sessions.length}{" "}
+            sessions ·{" "}
+            {preview.sessions.reduce((n, s) => n + s.prescriptions.length, 0)}{" "}
             personalized targets · Saved as draft
           </p>
           {preview.review_notes.length > 0 && (
@@ -171,24 +171,24 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
               {preview.plan.description}
             </p>
             <p className="mt-2 text-sm">
-              Goal: {preview.plan.goal || 'Not specified'}
+              Goal: {preview.plan.goal || "Not specified"}
             </p>
           </details>
           <div className="space-y-2 text-sm">
             <p>
-              Suggested fitness level:{' '}
+              Suggested fitness level:{" "}
               <span className="capitalize">{preview.plan.difficulty}</span>
             </p>
             <p className="whitespace-pre-wrap">
               {preview.plan.fitness_guidance}
             </p>
             <p>
-              Required equipment:{' '}
-              {preview.plan.equipment_required.join('; ') || 'Not specified'}
+              Required equipment:{" "}
+              {preview.plan.equipment_required.join("; ") || "Not specified"}
             </p>
             <p>
-              Suggested equipment:{' '}
-              {preview.plan.equipment_suggested.join('; ') || 'Not specified'}
+              Suggested equipment:{" "}
+              {preview.plan.equipment_suggested.join("; ") || "Not specified"}
             </p>
           </div>
           <div className="max-h-[32rem] space-y-3 overflow-y-auto rounded border border-zinc-700 p-3">
@@ -217,13 +217,21 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
                               {s.notes}
                             </p>
                           )}
+                          {s.exercises.map((e) => (
+                            <p key={e.id} className="text-xs text-zinc-400">
+                              Exercise log: {e.label} · {e.sets} sets ·{" "}
+                              {e.reps == null
+                                ? "Reps chosen during workout"
+                                : `${e.reps} prescribed reps`}
+                            </p>
+                          ))}
                           {s.prescriptions.map((r) => (
                             <p className="text-xs text-orange-300" key={r.id}>
-                              {r.label} · {r.sets} × {r.reps} · Starting{' '}
-                              {r.percent}% ·{' '}
-                              {r.strategy === 'previous'
-                                ? `${r.progression_mode || 'fixed'} progression; hard ${r.increment}, comfortable ${r.comfortable_increment ?? r.increment * 2}`
-                                : 'Prescribed percentage of profile record'}{' '}
+                              {r.label} · {r.sets} × {r.reps} · Starting{" "}
+                              {r.percent}% ·{" "}
+                              {r.strategy === "previous"
+                                ? `${r.progression_mode || "fixed"} progression; hard ${r.increment}, comfortable ${r.comfortable_increment ?? r.increment * 2}`
+                                : "Prescribed percentage of profile record"}{" "}
                               · {r.unit} · Rounding {r.rounding}
                             </p>
                           ))}
@@ -251,15 +259,15 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
                 onClick={save}
                 className="rounded bg-orange-600 px-4 py-2 font-medium disabled:opacity-50"
               >
-                {busy ? 'Saving draft…' : 'Create imported draft'}
+                {busy ? "Saving draft…" : "Create imported draft"}
               </button>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => {
-                  setPreview(null)
-                  setReviewed(false)
-                  setError(null)
+                  setPreview(null);
+                  setReviewed(false);
+                  setError(null);
                 }}
                 className="ml-3 text-sm text-zinc-400"
               >
@@ -285,5 +293,5 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
         </div>
       )}
     </section>
-  )
+  );
 }

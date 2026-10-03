@@ -1,172 +1,181 @@
-'use client'
-import { PrescriptionEditor } from '@/components/PrescriptionEditor'
-import { validatePrescriptions, type Prescription } from '@/lib/training'
+"use client";
+import { ExerciseDefinitionEditor } from "./ExerciseDefinitionEditor";
+import {
+  validateDefinitions,
+  type ExerciseDefinition,
+} from "@/lib/exercise-logging";
+import { PrescriptionEditor } from "@/components/PrescriptionEditor";
+import { validatePrescriptions, type Prescription } from "@/lib/training";
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type Plan = {
-  id: string
-  title: string
-  description: string | null
-  goal: string | null
-  duration_weeks: number
-  difficulty: string
-  equipment_required?: string[]
-  equipment_suggested?: string[]
-  fitness_guidance?: string | null
-  tags: string[] | null
-  is_published: boolean
-} | null
+  id: string;
+  title: string;
+  description: string | null;
+  goal: string | null;
+  duration_weeks: number;
+  difficulty: string;
+  equipment_required?: string[];
+  equipment_suggested?: string[];
+  fitness_guidance?: string | null;
+  tags: string[] | null;
+  is_published: boolean;
+} | null;
 
 type Session = {
-  prescriptions: Prescription[]
-  id: string
-  week_number: number
-  day_number: number
-  title: string
-  description: string | null
-  session_type: string
-  estimated_minutes: number | null
-  notes: string | null
-  order_index: number
-}
+  exercises?: ExerciseDefinition[];
+  prescriptions: Prescription[];
+  id: string;
+  week_number: number;
+  day_number: number;
+  title: string;
+  description: string | null;
+  session_type: string;
+  estimated_minutes: number | null;
+  notes: string | null;
+  order_index: number;
+};
 
 export function AdminPlanManager({
   existingPlan,
   existingSessions,
 }: {
-  existingPlan: Plan
-  existingSessions: Session[]
+  existingPlan: Plan;
+  existingSessions: Session[];
 }) {
-  const router = useRouter()
-  const supabase = createClient()
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter();
+  const supabase = createClient();
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Plan fields
-  const [title, setTitle] = useState(existingPlan?.title || '')
+  const [title, setTitle] = useState(existingPlan?.title || "");
   const [description, setDescription] = useState(
-    existingPlan?.description || '',
-  )
-  const [goal, setGoal] = useState(existingPlan?.goal || '')
+    existingPlan?.description || "",
+  );
+  const [goal, setGoal] = useState(existingPlan?.goal || "");
   const [durationWeeks, setDurationWeeks] = useState(
-    existingPlan?.duration_weeks?.toString() || '4',
-  )
+    existingPlan?.duration_weeks?.toString() || "4",
+  );
   const [difficulty, setDifficulty] = useState(
-    existingPlan?.difficulty || 'intermediate',
-  )
-  const [tags, setTags] = useState(existingPlan?.tags?.join(', ') || '')
+    existingPlan?.difficulty || "intermediate",
+  );
+  const [tags, setTags] = useState(existingPlan?.tags?.join(", ") || "");
   const [isPublished, setIsPublished] = useState(
     existingPlan?.is_published ?? true,
-  )
+  );
 
   const [requiredEquipment, setRequiredEquipment] = useState(
-    existingPlan?.equipment_required?.join('\n') || '',
-  )
+    existingPlan?.equipment_required?.join("\n") || "",
+  );
   const [suggestedEquipment, setSuggestedEquipment] = useState(
-    existingPlan?.equipment_suggested?.join('\n') || '',
-  )
+    existingPlan?.equipment_suggested?.join("\n") || "",
+  );
   const [fitnessGuidance, setFitnessGuidance] = useState(
-    existingPlan?.fitness_guidance || '',
-  )
+    existingPlan?.fitness_guidance || "",
+  );
 
   // Sessions
   const [sessions, setSessions] = useState<
     {
-      prescriptions: Prescription[]
-      id?: string
-      week_number: number
-      day_number: number
-      title: string
-      description: string
-      session_type: string
-      estimated_minutes: string
-      notes: string
-      order_index: number
+      exercises: ExerciseDefinition[];
+      prescriptions: Prescription[];
+      id?: string;
+      week_number: number;
+      day_number: number;
+      title: string;
+      description: string;
+      session_type: string;
+      estimated_minutes: string;
+      notes: string;
+      order_index: number;
     }[]
   >(
     existingSessions.map((s, i) => ({
+      exercises: s.exercises || [],
       prescriptions: s.prescriptions || [],
       id: s.id,
       week_number: s.week_number,
       day_number: s.day_number,
       title: s.title,
-      description: s.description || '',
+      description: s.description || "",
       session_type: s.session_type,
-      estimated_minutes: s.estimated_minutes?.toString() || '',
-      notes: s.notes || '',
+      estimated_minutes: s.estimated_minutes?.toString() || "",
+      notes: s.notes || "",
       order_index: s.order_index ?? i,
     })),
-  )
+  );
 
   const addSession = () => {
-    const last = sessions[sessions.length - 1]
-    const nextWeek = last ? last.week_number : 1
-    const nextDay = last ? last.day_number + 1 : 1
+    const last = sessions[sessions.length - 1];
+    const nextWeek = last ? last.week_number : 1;
+    const nextDay = last ? last.day_number + 1 : 1;
     setSessions([
       ...sessions,
       {
         week_number: nextDay > 7 ? nextWeek + 1 : nextWeek,
         day_number: nextDay > 7 ? 1 : nextDay,
+        exercises: [],
         prescriptions: [],
-        title: '',
-        description: '',
-        session_type: 'workout',
-        estimated_minutes: '',
-        notes: '',
+        title: "",
+        description: "",
+        session_type: "workout",
+        estimated_minutes: "",
+        notes: "",
         order_index: sessions.length,
       },
-    ])
-  }
+    ]);
+  };
 
   const updateSession = (
     index: number,
     field: string,
-    value: string | number | Prescription[],
+    value: string | number | Prescription[] | ExerciseDefinition[],
   ) => {
-    const updated = [...sessions]
-    updated[index] = { ...updated[index], [field]: value }
-    setSessions(updated)
-  }
+    const updated = [...sessions];
+    updated[index] = { ...updated[index], [field]: value };
+    setSessions(updated);
+  };
 
   const removeSession = (index: number) => {
-    setSessions(sessions.filter((_, i) => i !== index))
-  }
+    setSessions(sessions.filter((_, i) => i !== index));
+  };
 
   const handleSavePlan = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    setMessage(null)
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setMessage(null);
 
     const {
       data: { user },
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser();
     if (!user) {
-      setError('Not authenticated')
-      setLoading(false)
-      return
+      setError("Not authenticated");
+      setLoading(false);
+      return;
     }
 
     const tagList = tags
-      .split(',')
+      .split(",")
       .map((t) => t.trim())
-      .filter(Boolean)
+      .filter(Boolean);
 
     const equipmentList = (value: string) => [
       ...new Set(
         value
-          .split('\n')
+          .split("\n")
           .map((item) => item.trim())
           .filter(Boolean),
       ),
-    ]
-    const requiredList = equipmentList(requiredEquipment)
-    const suggestedList = equipmentList(suggestedEquipment)
+    ];
+    const requiredList = equipmentList(requiredEquipment);
+    const suggestedList = equipmentList(suggestedEquipment);
     if (
       [requiredList, suggestedList].some(
         (items) => items.length > 30 || items.some((item) => item.length > 100),
@@ -174,10 +183,10 @@ export function AdminPlanManager({
       fitnessGuidance.length > 2000
     ) {
       setError(
-        'Equipment lists allow 30 entries of up to 100 characters each. Fitness guidance allows 2000 characters.',
-      )
-      setLoading(false)
-      return
+        "Equipment lists allow 30 entries of up to 100 characters each. Fitness guidance allows 2000 characters.",
+      );
+      setLoading(false);
+      return;
     }
     const planPayload = {
       title,
@@ -191,14 +200,21 @@ export function AdminPlanManager({
       tags: tagList.length ? tagList : null,
       is_published: isPublished,
       created_by: user.id,
-    }
+    };
 
     for (const session of sessions) {
-      const invalid = validatePrescriptions(session.prescriptions)
+      try {
+        validateDefinitions(session.exercises);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Invalid exercises");
+        setLoading(false);
+        return;
+      }
+      const invalid = validatePrescriptions(session.prescriptions);
       if (invalid) {
-        setError(invalid)
-        setLoading(false)
-        return
+        setError(invalid);
+        setLoading(false);
+        return;
       }
     }
     const sessionRows = sessions.map((s, i) => ({
@@ -213,27 +229,28 @@ export function AdminPlanManager({
         : null,
       notes: s.notes || null,
       order_index: i,
+      exercises: s.exercises,
       prescriptions: s.prescriptions,
-    }))
+    }));
     const { data: planId, error: saveError } = await supabase.rpc(
-      'save_training_program',
+      "save_training_program",
       {
         p_plan_id: existingPlan?.id || null,
         p_plan: { ...planPayload, tags: tagList },
         p_sessions: sessionRows,
       },
-    )
+    );
     if (saveError) {
-      setError(saveError.message)
-      setLoading(false)
-      return
+      setError(saveError.message);
+      setLoading(false);
+      return;
     }
 
-    setMessage(existingPlan ? 'Plan updated!' : 'Plan created!')
-    setLoading(false)
-    router.push(`/admin/plans?edit=${planId}`)
-    router.refresh()
-  }
+    setMessage(existingPlan ? "Plan updated!" : "Plan created!");
+    setLoading(false);
+    router.push(`/admin/plans?edit=${planId}`);
+    router.refresh();
+  };
 
   return (
     <form onSubmit={handleSavePlan} className="space-y-8">
@@ -339,7 +356,7 @@ export function AdminPlanManager({
               rows={4}
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2"
               placeholder={
-                'Squat rack with safeties\nBarbell and plates\nFlat bench'
+                "Squat rack with safeties\nBarbell and plates\nFlat bench"
               }
             />
           </label>
@@ -350,7 +367,7 @@ export function AdminPlanManager({
               onChange={(e) => setSuggestedEquipment(e.target.value)}
               rows={4}
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2"
-              placeholder={'Microplates\nLifting belt'}
+              placeholder={"Microplates\nLifting belt"}
             />
           </label>
         </div>
@@ -433,7 +450,7 @@ export function AdminPlanManager({
                     onChange={(e) =>
                       updateSession(
                         i,
-                        'week_number',
+                        "week_number",
                         parseInt(e.target.value) || 1,
                       )
                     }
@@ -451,7 +468,7 @@ export function AdminPlanManager({
                     onChange={(e) =>
                       updateSession(
                         i,
-                        'day_number',
+                        "day_number",
                         parseInt(e.target.value) || 1,
                       )
                     }
@@ -467,7 +484,7 @@ export function AdminPlanManager({
                   <select
                     value={s.session_type}
                     onChange={(e) =>
-                      updateSession(i, 'session_type', e.target.value)
+                      updateSession(i, "session_type", e.target.value)
                     }
                     className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-sm text-white"
                   >
@@ -485,7 +502,7 @@ export function AdminPlanManager({
                     type="number"
                     value={s.estimated_minutes}
                     onChange={(e) =>
-                      updateSession(i, 'estimated_minutes', e.target.value)
+                      updateSession(i, "estimated_minutes", e.target.value)
                     }
                     className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-sm text-white"
                     placeholder="45"
@@ -500,7 +517,7 @@ export function AdminPlanManager({
                 <input
                   type="text"
                   value={s.title}
-                  onChange={(e) => updateSession(i, 'title', e.target.value)}
+                  onChange={(e) => updateSession(i, "title", e.target.value)}
                   className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-sm text-white"
                   placeholder="e.g. Strength Lower + Core"
                 />
@@ -513,7 +530,7 @@ export function AdminPlanManager({
                 <textarea
                   value={s.description}
                   onChange={(e) =>
-                    updateSession(i, 'description', e.target.value)
+                    updateSession(i, "description", e.target.value)
                   }
                   rows={4}
                   className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-sm text-white font-mono"
@@ -521,9 +538,13 @@ export function AdminPlanManager({
                 />
               </div>
 
+              <ExerciseDefinitionEditor
+                value={s.exercises}
+                onChange={(v) => updateSession(i, "exercises", v)}
+              />
               <PrescriptionEditor
                 value={s.prescriptions}
-                onChange={(value) => updateSession(i, 'prescriptions', value)}
+                onChange={(value) => updateSession(i, "prescriptions", value)}
               />
 
               <div>
@@ -533,7 +554,7 @@ export function AdminPlanManager({
                 <input
                   type="text"
                   value={s.notes}
-                  onChange={(e) => updateSession(i, 'notes', e.target.value)}
+                  onChange={(e) => updateSession(i, "notes", e.target.value)}
                   className="w-full rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-sm text-white"
                   placeholder="Scaling, equipment, tips..."
                 />
@@ -561,8 +582,8 @@ export function AdminPlanManager({
         disabled={loading || !title}
         className="rounded-lg bg-orange-600 px-8 py-3 font-medium text-white hover:bg-orange-500 disabled:opacity-50 transition"
       >
-        {loading ? 'Saving...' : existingPlan ? 'Update Plan' : 'Create Plan'}
+        {loading ? "Saving..." : existingPlan ? "Update Plan" : "Create Plan"}
       </button>
     </form>
-  )
+  );
 }

@@ -1,61 +1,75 @@
-import { ContinuePlans } from '@/components/ContinuePlans'
-import { PersonalizedTargets } from '@/components/PersonalizedTargets'
-import type { AthleteRecord } from '@/lib/training'
-import type { ResultWithProfile } from '@/types/database'
-import { createClient } from '@/lib/supabase/server'
-import { formatDate, formatTime } from '@/lib/utils'
-import Link from 'next/link'
-import { LogResultForm } from '@/components/LogResultForm'
+import { ContinuePlans } from "@/components/ContinuePlans";
+import { PersonalizedTargets } from "@/components/PersonalizedTargets";
+import type { AthleteRecord } from "@/lib/training";
+import type { ResultWithProfile } from "@/types/database";
+import { createClient } from "@/lib/supabase/server";
+import { formatDate, formatTime } from "@/lib/utils";
+import Link from "next/link";
+import { LogResultForm } from "@/components/LogResultForm";
 
 export default async function HomePage() {
-  const supabase = await createClient()
-  const today = new Date().toISOString().slice(0, 10)
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
 
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   const { data: records, error: recordsError } = user
     ? await supabase
-        .from('athlete_records')
-        .select('*')
-        .eq('user_id', user.id)
+        .from("athlete_records")
+        .select("*")
+        .eq("user_id", user.id)
         .returns<AthleteRecord[]>()
-    : { data: [], error: null }
+    : { data: [], error: null };
 
   const { data: workout } = await supabase
-    .from('workouts')
-    .select('*')
-    .eq('workout_date', today)
-    .single()
+    .from("workouts")
+    .select("*")
+    .eq("workout_date", today)
+    .single();
 
-  let userResult = null
+  let userResult = null;
   if (user && workout) {
     const { data } = await supabase
-      .from('results')
-      .select('*')
-      .eq('workout_id', workout.id)
-      .eq('user_id', user.id)
-      .single()
+      .from("results")
+      .select("*")
+      .eq("workout_id", workout.id)
+      .eq("user_id", user.id)
+      .single();
+    const { data: setLog, error: setLogError } = data
+      ? await supabase
+          .from("wod_exercise_logs")
+          .select("exercise_entries")
+          .eq("result_id", data.id)
+          .eq("user_id", user.id)
+          .maybeSingle()
+      : { data: null, error: null };
+    if (setLogError)
+      throw new Error(
+        "Could not load your exercise log. Check the latest migration.",
+      );
     userResult = data
+      ? { ...data, exercise_entries: setLog?.exercise_entries || [] }
+      : null;
   }
 
   // Top 5 results for today (only if logged in)
-  let topResults: ResultWithProfile[] = []
+  let topResults: ResultWithProfile[] = [];
   if (user && workout) {
     const { data } = await supabase
-      .from('results')
+      .from("results")
       .select(
         `
         *,
         profiles (display_name)
       `,
       )
-      .eq('workout_id', workout.id)
-      .order('completion_time_seconds', { ascending: true, nullsFirst: false })
+      .eq("workout_id", workout.id)
+      .order("completion_time_seconds", { ascending: true, nullsFirst: false })
       .limit(5)
-      .returns<ResultWithProfile[]>()
-    topResults = data || []
+      .returns<ResultWithProfile[]>();
+    topResults = data || [];
   }
 
   return (
@@ -73,11 +87,11 @@ export default async function HomePage() {
           <p className="mt-2 text-sm text-zinc-500">
             {user ? (
               <>
-                Browse{' '}
+                Browse{" "}
                 <Link href="/plans" className="text-orange-400 hover:underline">
                   training plans
-                </Link>{' '}
-                or check the{' '}
+                </Link>{" "}
+                or check the{" "}
                 <Link
                   href="/workouts"
                   className="text-orange-400 hover:underline"
@@ -90,7 +104,7 @@ export default async function HomePage() {
               <>
                 <Link href="/plans" className="text-orange-400 hover:underline">
                   Browse training plans
-                </Link>{' '}
+                </Link>{" "}
                 or check back later.
               </>
             )}
@@ -106,7 +120,7 @@ export default async function HomePage() {
                   {workout.title}
                 </h2>
                 <span className="mt-1 inline-block rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide text-zinc-300">
-                  {workout.workout_type.replace('_', ' ')}
+                  {workout.workout_type.replace("_", " ")}
                 </span>
               </div>
               {workout.time_cap_seconds && (
@@ -137,7 +151,7 @@ export default async function HomePage() {
 
             {workout.notes && (
               <p className="mt-4 text-sm text-zinc-400 border-t border-zinc-800 pt-4">
-                <span className="font-medium text-zinc-300">Notes:</span>{' '}
+                <span className="font-medium text-zinc-300">Notes:</span>{" "}
                 {workout.notes}
               </p>
             )}
@@ -147,9 +161,10 @@ export default async function HomePage() {
           {user ? (
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
               <h3 className="text-lg font-semibold mb-4">
-                {userResult ? 'Your Result' : 'Log Your Result'}
+                {userResult ? "Your Result" : "Log Your Result"}
               </h3>
               <LogResultForm
+                key={userResult?.id || workout.id}
                 workoutId={workout.id}
                 workoutType={workout.workout_type}
                 existing={userResult}
@@ -163,14 +178,14 @@ export default async function HomePage() {
                   className="text-orange-400 hover:underline"
                 >
                   Log in
-                </Link>{' '}
-                or{' '}
+                </Link>{" "}
+                or{" "}
                 <Link
                   href="/auth/signup"
                   className="text-orange-400 hover:underline"
                 >
                   sign up
-                </Link>{' '}
+                </Link>{" "}
                 to log your result and see the leaderboard.
               </p>
             </div>
@@ -199,7 +214,7 @@ export default async function HomePage() {
                         {i + 1}
                       </span>
                       <span className="font-medium">
-                        {r.profiles?.display_name || 'Athlete'}
+                        {r.profiles?.display_name || "Athlete"}
                       </span>
                       {!r.is_rx && (
                         <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
@@ -208,7 +223,7 @@ export default async function HomePage() {
                       )}
                     </div>
                     <span className="font-mono text-orange-400">
-                      {workout.workout_type === 'amrap'
+                      {workout.workout_type === "amrap"
                         ? `${r.rounds || 0} + ${r.extra_reps || 0}`
                         : formatTime(r.completion_time_seconds)}
                     </span>
@@ -220,5 +235,5 @@ export default async function HomePage() {
         </div>
       )}
     </div>
-  )
+  );
 }

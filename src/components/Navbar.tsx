@@ -1,28 +1,28 @@
-import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
-import { AuthButton } from './AuthButton'
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { AuthButton } from "./AuthButton";
 
 export async function Navbar() {
-  const supabase = await createClient()
+  const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
-  let isAdmin = false
+  let isAdmin = false;
 
   if (user) {
     const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
 
-    isAdmin = profile?.is_admin ?? false
+    isAdmin = profile?.is_admin ?? false;
   }
 
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+      <div className="mx-auto flex max-w-5xl flex-wrap gap-3 items-center justify-between px-4 py-3">
         <Link
           href="/dashboard"
           className="text-xl font-bold tracking-tight text-orange-500"
@@ -30,7 +30,7 @@ export async function Navbar() {
           Sword and Shield
         </Link>
 
-        <nav className="flex items-center gap-4 text-sm font-medium">
+        <nav className="flex flex-wrap items-center gap-3 text-sm font-medium">
           <Link
             href="/dashboard"
             className="text-zinc-300 hover:text-white transition"
@@ -68,6 +68,11 @@ export async function Navbar() {
             </Link>
           )}
 
+          {user && (
+            <Link href="/badges" className="text-zinc-300 hover:text-white">
+              Badges
+            </Link>
+          )}
           {isAdmin && (
             <Link
               href="/admin"
@@ -81,5 +86,5 @@ export async function Navbar() {
         </nav>
       </div>
     </header>
-  )
+  );
 }

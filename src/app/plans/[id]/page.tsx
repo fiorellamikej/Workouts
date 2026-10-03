@@ -1,133 +1,134 @@
-import { PersonalizedTargets } from '@/components/PersonalizedTargets'
+import { definitionsFromText } from "@/lib/exercise-logging";
+import { PersonalizedTargets } from "@/components/PersonalizedTargets";
 import {
   outcomeText,
   timeText,
   type AthleteRecord,
   type ExerciseLog,
-} from '@/lib/training'
+} from "@/lib/training";
 import type {
   UserPlanEnrollment,
   PlanResult,
   PlanSession,
-} from '@/types/database'
-import { createClient } from '@/lib/supabase/server'
-import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
-import { EnrollButton } from '@/components/EnrollButton'
-import { LogPlanResultForm } from '@/components/LogPlanResultForm'
-import { ProgramControls, UndoCompletion } from '@/components/ProgramControls'
-import { CompletionCelebration } from '@/components/CompletionCelebration'
-import { WorkoutHistoryPicker } from '@/components/WorkoutHistoryPicker'
-import { formatTime } from '@/lib/utils'
+} from "@/types/database";
+import { createClient } from "@/lib/supabase/server";
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { EnrollButton } from "@/components/EnrollButton";
+import { LogPlanResultForm } from "@/components/LogPlanResultForm";
+import { ProgramControls, UndoCompletion } from "@/components/ProgramControls";
+import { CompletionCelebration } from "@/components/CompletionCelebration";
+import { WorkoutHistoryPicker } from "@/components/WorkoutHistoryPicker";
+import { formatTime } from "@/lib/utils";
 
 export default async function PlanDetailPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>
-  searchParams: Promise<{ run?: string; day?: string; celebrate?: string }>
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ run?: string; day?: string; celebrate?: string }>;
 }) {
   const { id } = await params,
     { run, day, celebrate } = await searchParams,
-    db = await createClient()
+    db = await createClient();
   const {
     data: { user },
-  } = await db.auth.getUser()
+  } = await db.auth.getUser();
   const { data: plan, error: planError } = await db
-    .from('training_plans')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle()
-  if (planError) throw new Error('Could not load program. Please retry.')
-  if (!plan) notFound()
+    .from("training_plans")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (planError) throw new Error("Could not load program. Please retry.");
+  if (!plan) notFound();
   const { data: sessions, error: sessionsError } = await db
-    .from('plan_sessions')
-    .select('*')
-    .eq('plan_id', id)
-    .order('order_index')
-    .order('week_number')
-    .order('day_number')
-    .order('id')
-    .returns<PlanSession[]>()
-  if (sessionsError) throw new Error('Could not load sessions. Please retry.')
-  const ordered = sessions || []
+    .from("plan_sessions")
+    .select("*")
+    .eq("plan_id", id)
+    .order("order_index")
+    .order("week_number")
+    .order("day_number")
+    .order("id")
+    .returns<PlanSession[]>();
+  if (sessionsError) throw new Error("Could not load sessions. Please retry.");
+  const ordered = sessions || [];
   let enrollment: UserPlanEnrollment | null = null,
     records: AthleteRecord[] = [],
     results: PlanResult[] = [],
-    logs: ExerciseLog[] = []
-  let selectedAttempt = 1
+    logs: ExerciseLog[] = [];
+  let selectedAttempt = 1;
   if (user) {
     const [recordQuery, enrollmentQuery] = await Promise.all([
       db
-        .from('athlete_records')
-        .select('*')
-        .eq('user_id', user.id)
+        .from("athlete_records")
+        .select("*")
+        .eq("user_id", user.id)
         .returns<AthleteRecord[]>(),
       db
-        .from('user_plan_enrollments')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('plan_id', id)
+        .from("user_plan_enrollments")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("plan_id", id)
         .maybeSingle<UserPlanEnrollment>(),
-    ])
+    ]);
     if (recordQuery.error || enrollmentQuery.error)
       throw new Error(
-        'Could not load your records or program progress. Check the new migration.',
-      )
-    records = recordQuery.data || []
-    enrollment = enrollmentQuery.data
+        "Could not load your records or program progress. Check the new migration.",
+      );
+    records = recordQuery.data || [];
+    enrollment = enrollmentQuery.data;
     if (enrollment) {
-      const requested = Number(run)
+      const requested = Number(run);
       selectedAttempt =
         Number.isInteger(requested) &&
         requested > 0 &&
         requested <= enrollment.current_attempt
           ? requested
-          : enrollment.current_attempt
+          : enrollment.current_attempt;
       const [resultQuery, logQuery] = await Promise.all([
         db
-          .from('plan_results')
-          .select('*')
-          .eq('enrollment_id', enrollment.id)
-          .eq('attempt', selectedAttempt)
+          .from("plan_results")
+          .select("*")
+          .eq("enrollment_id", enrollment.id)
+          .eq("attempt", selectedAttempt)
           .returns<PlanResult[]>(),
         db
-          .from('training_exercise_logs')
-          .select('*, plan_results!inner(attempt)')
-          .eq('enrollment_id', enrollment.id)
-          .eq('plan_results.attempt', selectedAttempt)
-          .order('created_at', { ascending: false })
+          .from("training_exercise_logs")
+          .select("*, plan_results!inner(attempt)")
+          .eq("enrollment_id", enrollment.id)
+          .eq("plan_results.attempt", selectedAttempt)
+          .order("created_at", { ascending: false })
           .returns<ExerciseLog[]>(),
-      ])
+      ]);
       if (resultQuery.error || logQuery.error)
-        throw new Error('Could not load workout history. Please retry.')
-      results = resultQuery.data || []
-      logs = logQuery.data || []
+        throw new Error("Could not load workout history. Please retry.");
+      results = resultQuery.data || [];
+      logs = logQuery.data || [];
     }
   }
-  if (!enrollment) redirect(`/plans/${id}/overview`)
+  if (!enrollment) redirect(`/plans/${id}/overview`);
   const archived =
-    !!enrollment && selectedAttempt !== enrollment.current_attempt
+    !!enrollment && selectedAttempt !== enrollment.current_attempt;
   const done = new Set(results.map((r) => r.session_id)),
-    firstUnfinished = ordered.find((s) => !done.has(s.id))
+    firstUnfinished = ordered.find((s) => !done.has(s.id));
   const selected =
     ordered.find((s) => s.id === day) ||
     (archived
       ? ordered.find((s) => done.has(s.id)) || ordered[0]
       : ordered.find((s) => s.id === enrollment?.current_session_id) ||
         firstUnfinished ||
-        ordered[ordered.length - 1])
+        ordered[ordered.length - 1]);
   const celebrationResult =
     !archived &&
     enrollment.is_following &&
-    results.find((r) => r.id === celebrate && r.session_id === selected?.id)
-  const nextSession = ordered.find((s) => !done.has(s.id))
+    results.find((r) => r.id === celebrate && r.session_id === selected?.id);
+  const nextSession = ordered.find((s) => !done.has(s.id));
   const percent = ordered.length
     ? Math.round((done.size / ordered.length) * 100)
-    : 0
+    : 0;
   const weeks = [...new Set(ordered.map((s) => s.week_number))].sort(
     (a, b) => a - b,
-  )
+  );
   return (
     <div className="space-y-8">
       <div>
@@ -156,10 +157,10 @@ export default async function PlanDetailPage({
                 {archived
                   ? `Run ${selectedAttempt} history`
                   : done.size === ordered.length && ordered.length
-                    ? 'Program complete!'
-                    : enrollment.status === 'paused'
-                      ? 'Program paused'
-                      : 'Your Program Progress'}
+                    ? "Program complete!"
+                    : enrollment.status === "paused"
+                      ? "Program paused"
+                      : "Your Program Progress"}
               </h2>
               <p className="text-sm text-zinc-400">
                 Run {selectedAttempt} · {done.size}/{ordered.length} sessions
@@ -190,12 +191,12 @@ export default async function PlanDetailPage({
                   planId={id}
                   attempt={selectedAttempt}
                   sessions={ordered}
-                  selectedId={selected?.id || ''}
+                  selectedId={selected?.id || ""}
                 />
               )}
               {!enrollment.is_following && (
                 <p className="text-sm text-zinc-400">
-                  You left this program. Your results are saved.{' '}
+                  You left this program. Your results are saved.{" "}
                   <Link
                     href={`/plans/${id}/overview`}
                     className="text-orange-400"
@@ -225,7 +226,7 @@ export default async function PlanDetailPage({
                     ).map((n) => (
                       <Link
                         key={n}
-                        className={`rounded-lg px-3 py-2 text-sm ${n === selectedAttempt ? 'bg-orange-600' : 'bg-zinc-800'}`}
+                        className={`rounded-lg px-3 py-2 text-sm ${n === selectedAttempt ? "bg-orange-600" : "bg-zinc-800"}`}
                         href={
                           n === enrollment.current_attempt
                             ? `/plans/${id}`
@@ -233,7 +234,7 @@ export default async function PlanDetailPage({
                         }
                       >
                         Run {n}
-                        {n === enrollment.current_attempt ? ' (current)' : ''}
+                        {n === enrollment.current_attempt ? " (current)" : ""}
                       </Link>
                     ))}
                   </div>
@@ -250,7 +251,7 @@ export default async function PlanDetailPage({
           <p>
             <Link href="/auth/login" className="text-orange-400">
               Log in
-            </Link>{' '}
+            </Link>{" "}
             to follow this plan and save your progress.
           </p>
         )}
@@ -280,8 +281,8 @@ export default async function PlanDetailPage({
         <section className="space-y-6">
           <h2 className="text-xl font-semibold">
             {archived || !enrollment.is_following
-              ? 'Saved Workout'
-              : 'Your Selected Workout'}
+              ? "Saved Workout"
+              : "Your Selected Workout"}
           </h2>
           {weeks
             .filter((week) => week === selected?.week_number)
@@ -296,7 +297,7 @@ export default async function PlanDetailPage({
                       ),
                       resultLogs = result
                         ? logs.filter((l) => l.result_id === result.id)
-                        : []
+                        : [];
                     const earlierSessions = new Set(
                       ordered
                         .slice(
@@ -304,23 +305,23 @@ export default async function PlanDetailPage({
                           ordered.findIndex((s) => s.id === session.id),
                         )
                         .map((s) => s.id),
-                    )
+                    );
                     const earlierResults = new Set(
                       results
                         .filter((r) => earlierSessions.has(r.session_id))
                         .map((r) => r.id),
-                    )
-                    const isSelected = !archived && selected?.id === session.id
+                    );
+                    const isSelected = !archived && selected?.id === session.id;
                     return (
                       <article
                         id={`session-${session.id}`}
                         key={`${selectedAttempt}-${session.id}`}
-                        className={`scroll-mt-24 space-y-3 rounded-xl border p-5 ${isSelected ? 'border-orange-500' : result ? 'border-green-800/50' : 'border-zinc-800'} ${result ? 'bg-green-950/20' : 'bg-zinc-900/50'}`}
+                        className={`scroll-mt-24 space-y-3 rounded-xl border p-5 ${isSelected ? "border-orange-500" : result ? "border-green-800/50" : "border-zinc-800"} ${result ? "bg-green-950/20" : "bg-zinc-900/50"}`}
                       >
                         <p className="text-xs text-zinc-400">
                           Day {session.day_number} · {session.session_type}
-                          {result ? ' · Completed' : ''}
-                          {isSelected ? ' · Selected day' : ''}
+                          {result ? " · Completed" : ""}
+                          {isSelected ? " · Selected day" : ""}
                         </p>
                         <h4 className="font-semibold">{session.title}</h4>
                         {session.description && (
@@ -348,24 +349,42 @@ export default async function PlanDetailPage({
                         {result && (
                           <div className="space-y-2 text-sm">
                             <p className="text-orange-400">
-                              Logged:{' '}
+                              Logged:{" "}
                               {result.completion_time_seconds != null
                                 ? formatTime(result.completion_time_seconds)
                                 : result.rounds != null
                                   ? `${result.rounds} + ${result.extra_reps || 0}`
-                                  : 'Done'}
+                                  : "Done"}
                               {result.weight_used
                                 ? ` · ${result.weight_used}`
-                                : ''}
+                                : ""}
                             </p>
                             {resultLogs.map((l) => (
                               <p key={l.id}>
-                                {l.label} · {l.sets} × {l.reps} ·{' '}
-                                {l.unit === 'seconds'
+                                {l.label} · {l.sets} × {l.reps} ·{" "}
+                                {l.unit === "seconds"
                                   ? timeText(Number(l.value))
-                                  : `${l.value} ${l.unit}`}{' '}
+                                  : `${l.value} ${l.unit}`}{" "}
                                 · {outcomeText(l.outcome)}
                               </p>
+                            ))}
+                            {(result.exercise_entries || []).map((e) => (
+                              <div
+                                key={e.id}
+                                className="rounded-lg bg-zinc-900 p-3"
+                              >
+                                <p className="font-medium">{e.label}</p>
+                                {e.sets.map((s, i) => (
+                                  <p key={i}>
+                                    Set {i + 1}: {s.reps ?? "—"} reps ·{" "}
+                                    {s.weight == null
+                                      ? "—"
+                                      : `${s.weight} ${e.unit}`}
+                                    {s.rpe != null ? ` · RPE ${s.rpe}` : ""}
+                                    {s.completed ? " ✓" : ""}
+                                  </p>
+                                ))}
+                              </div>
                             ))}
                             {result.notes && (
                               <p className="whitespace-pre-wrap text-zinc-400">
@@ -378,10 +397,15 @@ export default async function PlanDetailPage({
                           (result ||
                             (!archived &&
                               enrollment.is_following &&
-                              enrollment.status !== 'paused')) && (
+                              enrollment.status !== "paused")) && (
                             <div className="space-y-3 border-t border-zinc-800 pt-3">
                               <LogPlanResultForm
-                                key={result?.id || 'new'}
+                                key={`${selectedAttempt}-${session.id}-${result?.id || "new"}`}
+                                exercises={
+                                  session.exercises?.length
+                                    ? session.exercises
+                                    : definitionsFromText(session.description)
+                                }
                                 planId={id}
                                 enrollmentId={enrollment.id}
                                 sessionId={session.id}
@@ -410,12 +434,12 @@ export default async function PlanDetailPage({
                           </p>
                         )}
                       </article>
-                    )
+                    );
                   })}
               </div>
             ))}
         </section>
       )}
     </div>
-  )
+  );
 }
