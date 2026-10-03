@@ -73,6 +73,11 @@ export async function Navbar() {
               Badges
             </Link>
           )}
+          {user && (
+            <Link href="/feedback" className="text-zinc-300 hover:text-white">
+              Feedback
+            </Link>
+          )}
           {isAdmin && (
             <Link
               href="/admin"

@@ -1,5 +1,6 @@
 "use client";
 
+import { reportAppError } from "@/lib/report-error";
 import { useState } from "react";
 import { ExerciseSetLogger } from "./ExerciseSetLogger";
 import {
@@ -59,43 +60,53 @@ export function LogResultForm({ workoutId, workoutType, existing }: Props) {
     setLoading(true);
     setError(null);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setError("You must be logged in");
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setError("You must be logged in");
+        setLoading(false);
+        return;
+      }
+
+      const payload = {
+        user_id: user.id,
+        workout_id: workoutId,
+        completion_time_seconds:
+          workoutType === "amrap" ? null : parseTimeInput(timeInput),
+        rounds: workoutType === "amrap" ? parseInt(rounds) || null : null,
+        extra_reps:
+          workoutType === "amrap" ? parseInt(extraReps) || null : null,
+        weight_used: weightUsed || null,
+        is_rx: isRx,
+        notes: notes || null,
+        exercise_entries: savedEntries,
+      };
+
+      const { error } = await supabase.rpc("save_wod_exercise_result", {
+        p_workout: workoutId,
+        p_result: payload,
+        p_entries: savedEntries,
+        p_result_id: existing?.id || null,
+      });
+
+      if (error) {
+        void reportAppError(error);
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+
+      router.refresh();
+    } catch (err) {
+      void reportAppError(err);
+      setError(
+        "Could not save workout. Check your connection and your latest result before retrying.",
+      );
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const payload = {
-      user_id: user.id,
-      workout_id: workoutId,
-      completion_time_seconds:
-        workoutType === "amrap" ? null : parseTimeInput(timeInput),
-      rounds: workoutType === "amrap" ? parseInt(rounds) || null : null,
-      extra_reps: workoutType === "amrap" ? parseInt(extraReps) || null : null,
-      weight_used: weightUsed || null,
-      is_rx: isRx,
-      notes: notes || null,
-      exercise_entries: savedEntries,
-    };
-
-    const { error } = await supabase.rpc("save_wod_exercise_result", {
-      p_workout: workoutId,
-      p_result: payload,
-      p_entries: savedEntries,
-      p_result_id: existing?.id || null,
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    router.refresh();
-    setLoading(false);
   };
 
   return (

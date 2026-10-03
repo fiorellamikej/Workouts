@@ -1,7 +1,8 @@
-'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+"use client";
+import { reportAppError } from "@/lib/report-error";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import {
   RECORDS,
   bestRecord,
@@ -11,31 +12,31 @@ import {
   parseDuration,
   type AthleteRecord,
   type RecordKey,
-} from '@/lib/training'
+} from "@/lib/training";
 
 export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
-  const [key, setKey] = useState<RecordKey>('squat')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [value, setValue] = useState('')
-  const [unit, setUnit] = useState<'lb' | 'kg'>('lb')
-  const [date, setDate] = useState('')
-  const [notes, setNotes] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
-  const router = useRouter()
-  const timed = RECORDS[key].kind === 'time'
+  const [key, setKey] = useState<RecordKey>("squat");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [value, setValue] = useState("");
+  const [unit, setUnit] = useState<"lb" | "kg">("lb");
+  const [date, setDate] = useState("");
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const router = useRouter();
+  const timed = RECORDS[key].kind === "time";
   const field =
-    'w-full rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-white'
+    "w-full rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-white";
   const renderValue = (r: AthleteRecord) =>
-    r.unit === 'seconds'
+    r.unit === "seconds"
       ? timeText(Number(r.value))
-      : `${Number(recordValue(r, unit).toFixed(2))} ${unit}`
+      : `${Number(recordValue(r, unit).toFixed(2))} ${unit}`;
   async function save(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    setMessage('')
-    const parsed = timed ? parseDuration(value) : Number(value)
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    const parsed = timed ? parseDuration(value) : Number(value);
     if (
       !parsed ||
       !Number.isFinite(parsed) ||
@@ -44,72 +45,74 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
     ) {
       setError(
         timed
-          ? 'Enter a positive time as mm:ss (example 7:30).'
-          : 'Enter a positive weight.',
-      )
-      return
+          ? "Enter a positive time as mm:ss (example 7:30)."
+          : "Enter a positive weight.",
+      );
+      return;
     }
     if (editingId && !date) {
-      setError('Keep or choose the achieved date for this correction.')
-      return
+      setError("Keep or choose the achieved date for this correction.");
+      return;
     }
-    setBusy(true)
+    setBusy(true);
     try {
-      const db = createClient()
+      const db = createClient();
       const {
         data: { user },
-      } = await db.auth.getUser()
-      if (!user) throw new Error('Please log in again.')
+      } = await db.auth.getUser();
+      if (!user) throw new Error("Please log in again.");
       const payload = {
         record_key: key,
         value: parsed,
-        unit: timed ? 'seconds' : unit,
+        unit: timed ? "seconds" : unit,
         ...(date ? { achieved_at: date } : {}),
         notes: notes.trim() || null,
-      }
+      };
       const query = editingId
         ? db
-            .from('athlete_records')
+            .from("athlete_records")
             .update(payload)
-            .eq('id', editingId)
-            .eq('user_id', user.id)
-        : db.from('athlete_records').insert({ ...payload, user_id: user.id })
-      const { error } = await query.select('id').single()
-      if (error) throw error
-      setValue('')
-      setNotes('')
-      setMessage(editingId ? 'Record corrected.' : 'Record saved.')
-      setEditingId(null)
-      setDate('')
-      router.refresh()
+            .eq("id", editingId)
+            .eq("user_id", user.id)
+        : db.from("athlete_records").insert({ ...payload, user_id: user.id });
+      const { error } = await query.select("id").single();
+      if (error) throw error;
+      setValue("");
+      setNotes("");
+      setMessage(editingId ? "Record corrected." : "Record saved.");
+      setEditingId(null);
+      setDate("");
+      router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save record.')
+      void reportAppError(e);
+      setError(e instanceof Error ? e.message : "Could not save record.");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
   async function remove(id: string) {
-    if (!window.confirm('Delete this record entry?')) return
-    setBusy(true)
-    setError('')
-    setMessage('')
+    if (!window.confirm("Delete this record entry?")) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
     try {
       const { error } = await createClient()
-        .from('athlete_records')
+        .from("athlete_records")
         .delete()
-        .eq('id', id)
-      if (error) throw error
+        .eq("id", id);
+      if (error) throw error;
       if (editingId === id) {
-        setEditingId(null)
-        setValue('')
-        setDate('')
-        setNotes('')
+        setEditingId(null);
+        setValue("");
+        setDate("");
+        setNotes("");
       }
-      router.refresh()
+      router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not delete record.')
+      void reportAppError(e);
+      setError(e instanceof Error ? e.message : "Could not delete record.");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
   return (
@@ -123,12 +126,12 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
       <div className="grid gap-3 sm:grid-cols-2">
         {(Object.keys(RECORDS) as RecordKey[]).map((k) => {
           const best = bestRecord(records, k),
-            latest = trainingRecord(records, k)
+            latest = trainingRecord(records, k);
           return (
             <div key={k} className="rounded-lg bg-zinc-800/60 p-3">
               <p className="text-sm text-zinc-400">{RECORDS[k].label}</p>
               <p className="text-xl font-semibold">
-                {best ? renderValue(best) : '—'}
+                {best ? renderValue(best) : "—"}
               </p>
               {latest && (
                 <p className="text-xs text-zinc-400">
@@ -136,7 +139,7 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
                 </p>
               )}
             </div>
-          )
+          );
         })}
       </div>
       <form id="record-form" onSubmit={save} className="scroll-mt-24 space-y-3">
@@ -152,8 +155,8 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
               className={field}
               value={key}
               onChange={(e) => {
-                setKey(e.target.value as RecordKey)
-                setValue('')
+                setKey(e.target.value as RecordKey);
+                setValue("");
               }}
             >
               {(Object.keys(RECORDS) as RecordKey[]).map((k) => (
@@ -164,14 +167,14 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
             </select>
           </label>
           <label className="text-sm">
-            {timed ? 'Finish time (mm:ss)' : 'One-rep max'}
+            {timed ? "Finish time (mm:ss)" : "One-rep max"}
             <input
               required
               className={field}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder={timed ? '7:30' : '225'}
-              inputMode={timed ? 'text' : 'decimal'}
+              placeholder={timed ? "7:30" : "225"}
+              inputMode={timed ? "text" : "decimal"}
             />
           </label>
           <label className="text-sm">
@@ -179,14 +182,14 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
             <select
               className={field}
               value={unit}
-              onChange={(e) => setUnit(e.target.value as 'lb' | 'kg')}
+              onChange={(e) => setUnit(e.target.value as "lb" | "kg")}
             >
               <option value="lb">Pounds</option>
               <option value="kg">Kilograms</option>
             </select>
           </label>
           <label className="text-sm">
-            {editingId ? 'Date achieved' : 'Date achieved (blank = today)'}
+            {editingId ? "Date achieved" : "Date achieved (blank = today)"}
             <input
               className={field}
               type="date"
@@ -210,7 +213,7 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
           disabled={busy}
           className="rounded-lg bg-orange-600 px-4 py-2 disabled:opacity-50"
         >
-          {busy ? 'Saving…' : editingId ? 'Save Correction' : 'Save Record'}
+          {busy ? "Saving…" : editingId ? "Save Correction" : "Save Record"}
         </button>
         {editingId && (
           <button
@@ -218,11 +221,11 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
             disabled={busy}
             className="ml-3 text-sm text-zinc-300"
             onClick={() => {
-              setEditingId(null)
-              setValue('')
-              setDate('')
-              setNotes('')
-              setError('')
+              setEditingId(null);
+              setValue("");
+              setDate("");
+              setNotes("");
+              setError("");
             }}
           >
             Cancel Edit
@@ -253,7 +256,7 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
                 {RECORDS[r.record_key].label}: {renderValue(r)}
                 <p className="text-xs text-zinc-400">
                   {r.achieved_at}
-                  {r.notes ? ` · ${r.notes}` : ''}
+                  {r.notes ? ` · ${r.notes}` : ""}
                 </p>
               </div>
               <div className="flex gap-3">
@@ -261,21 +264,21 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
                   disabled={busy}
                   className="text-sm text-orange-400"
                   onClick={() => {
-                    setEditingId(r.id)
-                    setKey(r.record_key)
+                    setEditingId(r.id);
+                    setKey(r.record_key);
                     setValue(
-                      r.unit === 'seconds'
+                      r.unit === "seconds"
                         ? timeText(Number(r.value))
                         : String(r.value),
-                    )
-                    if (r.unit !== 'seconds') setUnit(r.unit)
-                    setDate(r.achieved_at)
-                    setNotes(r.notes || '')
-                    setError('')
-                    setMessage('')
+                    );
+                    if (r.unit !== "seconds") setUnit(r.unit);
+                    setDate(r.achieved_at);
+                    setNotes(r.notes || "");
+                    setError("");
+                    setMessage("");
                     document
-                      .getElementById('record-form')
-                      ?.scrollIntoView({ behavior: 'smooth' })
+                      .getElementById("record-form")
+                      ?.scrollIntoView({ behavior: "smooth" });
                   }}
                 >
                   Edit
@@ -293,5 +296,5 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
         </ul>
       </details>
     </section>
-  )
+  );
 }

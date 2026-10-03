@@ -1,4 +1,5 @@
 "use client";
+import { reportAppError } from "@/lib/report-error";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -57,6 +58,7 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
       setSaved(String(id));
       router.refresh();
     } catch (e) {
+      void reportAppError(e);
       setError(
         e &&
           typeof e === "object" &&
@@ -76,6 +78,15 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
       <p className="text-sm text-zinc-400">
         Upload a prepared Sword and Shield JSON file, review the whole program,
         then create a new draft. Existing plans and results are preserved.
+      </p>
+      <p className="text-sm">
+        <a
+          href="/templates/workout-program-template.json"
+          download
+          className="text-orange-400 underline"
+        >
+          Download workout program template (.json)
+        </a>
       </p>
       <label className="block text-sm">
         Plan import file (.json)

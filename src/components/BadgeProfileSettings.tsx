@@ -1,4 +1,5 @@
 "use client";
+import { reportAppError } from "@/lib/report-error";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -71,6 +72,7 @@ export function BadgeProfileSettings({
           setMessage("Profile saved. Your rest-day schedule starts tomorrow.");
           router.refresh();
         } catch (e) {
+          void reportAppError(e);
           setMessage(
             e && typeof e === "object" && "message" in e
               ? String(e.message)

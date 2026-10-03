@@ -1,0 +1,73 @@
+{
+  "format": "sword-shield-plan",
+  "version": 1,
+  "plan": {
+    "title": "New Program Template",
+    "duration_weeks": 1,
+    "difficulty": "beginner",
+    "description": "Replace these sample sessions with your programming. Review before publishing.",
+    "goal": "Enter your program goal",
+    "is_published": false,
+    "equipment_required": [
+      "Barbell",
+      "Plates",
+      "Squat rack"
+    ],
+    "equipment_suggested": [
+      "Bench"
+    ],
+    "fitness_guidance": "Replace with the intended fitness level and scaling guidance.",
+    "tags": [
+      "sample"
+    ]
+  },
+  "sessions": [
+    {
+      "week_number": 1,
+      "day_number": 1,
+      "title": "Squat and row",
+      "session_type": "workout",
+      "description": "Back squat: 3 \u00d7 5. Log each set.",
+      "prescriptions": [],
+      "exercises": [
+        {
+          "id": "squat-1",
+          "label": "Back squat",
+          "sets": 3,
+          "reps": 5
+        },
+        {
+          "id": "row-1",
+          "label": "Pendlay row",
+          "sets": 3,
+          "reps": 8
+        }
+      ]
+    },
+    {
+      "week_number": 1,
+      "day_number": 2,
+      "title": "Bench press",
+      "session_type": "workout",
+      "description": "Bench press: 3 \u00d7 5. Log each set.",
+      "prescriptions": [],
+      "exercises": [
+        {
+          "id": "bench-1",
+          "label": "Bench press",
+          "sets": 3,
+          "reps": 5
+        }
+      ]
+    },
+    {
+      "week_number": 1,
+      "day_number": 3,
+      "title": "Scheduled rest",
+      "session_type": "rest",
+      "description": "Rest day.",
+      "exercises": [],
+      "prescriptions": []
+    }
+  ]
+}

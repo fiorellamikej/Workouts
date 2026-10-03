@@ -1,4 +1,5 @@
 "use client";
+import { reportAppError } from "@/lib/report-error";
 import { useState } from "react";
 import { ExerciseSetLogger } from "./ExerciseSetLogger";
 import {
@@ -123,6 +124,7 @@ export function LogPlanResultForm({
         );
       else router.refresh();
     } catch (e) {
+      void reportAppError(e);
       setError(e instanceof Error ? e.message : "Could not save workout.");
     } finally {
       setBusy(false);

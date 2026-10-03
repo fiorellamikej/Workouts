@@ -1,3 +1,4 @@
+import { MailingPreference } from "@/components/MailingPreference";
 import { BadgeProfileSettings } from "@/components/BadgeProfileSettings";
 import { PersonalRecords } from "@/components/PersonalRecords";
 import { ContinuePlans } from "@/components/ContinuePlans";
@@ -18,10 +19,13 @@ export default async function ProfilePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select("id, display_name, avatar_url, is_admin, created_at, updated_at")
     .eq("id", user.id)
     .single();
 
+  const { data: mailingPreference, error: mailingError } = await supabase.rpc(
+    "my_mailing_preference",
+  );
   const { data: badgeSettings } = await supabase
     .from("badge_settings")
     .select("timezone, workout_days, schedule_configured")
@@ -74,6 +78,10 @@ export default async function ProfilePage() {
           settings={badgeSettings}
         />
       </div>
+      <MailingPreference
+        initial={mailingPreference === true}
+        error={!!mailingError}
+      />
       <ContinuePlans userId={user.id} />
       {recordsError ? (
         <p role="alert" className="text-red-400">
