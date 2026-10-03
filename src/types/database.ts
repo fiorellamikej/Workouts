@@ -66,6 +66,9 @@ export type PR = {
 }
 
 export type TrainingPlan = {
+  equipment_required: string[]
+  equipment_suggested: string[]
+  fitness_guidance: string | null
   id: string
   title: string
   description: string | null
@@ -100,6 +103,8 @@ export type PlanSession = {
 }
 
 export type UserPlanEnrollment = {
+  is_following: boolean
+  current_attempt: number
   id: string
   user_id: string
   plan_id: string
@@ -114,6 +119,8 @@ export type UserPlanEnrollment = {
 }
 
 export type PlanResult = {
+  attempt: number
+  prescriptions_snapshot: Prescription[]
   id: string
   user_id: string
   enrollment_id: string

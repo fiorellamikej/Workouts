@@ -15,6 +15,7 @@ import {
 
 export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
   const [key, setKey] = useState<RecordKey>('squat')
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [value, setValue] = useState('')
   const [unit, setUnit] = useState<'lb' | 'kg'>('lb')
   const [date, setDate] = useState('')
@@ -48,6 +49,10 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
       )
       return
     }
+    if (editingId && !date) {
+      setError('Keep or choose the achieved date for this correction.')
+      return
+    }
     setBusy(true)
     try {
       const db = createClient()
@@ -55,20 +60,27 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
         data: { user },
       } = await db.auth.getUser()
       if (!user) throw new Error('Please log in again.')
-      const { error } = await db
-        .from('athlete_records')
-        .insert({
-          user_id: user.id,
-          record_key: key,
-          value: parsed,
-          unit: timed ? 'seconds' : unit,
-          ...(date ? { achieved_at: date } : {}),
-          notes: notes.trim() || null,
-        })
+      const payload = {
+        record_key: key,
+        value: parsed,
+        unit: timed ? 'seconds' : unit,
+        ...(date ? { achieved_at: date } : {}),
+        notes: notes.trim() || null,
+      }
+      const query = editingId
+        ? db
+            .from('athlete_records')
+            .update(payload)
+            .eq('id', editingId)
+            .eq('user_id', user.id)
+        : db.from('athlete_records').insert({ ...payload, user_id: user.id })
+      const { error } = await query.select('id').single()
       if (error) throw error
       setValue('')
       setNotes('')
-      setMessage('Record saved.')
+      setMessage(editingId ? 'Record corrected.' : 'Record saved.')
+      setEditingId(null)
+      setDate('')
       router.refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save record.')
@@ -87,6 +99,12 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
         .delete()
         .eq('id', id)
       if (error) throw error
+      if (editingId === id) {
+        setEditingId(null)
+        setValue('')
+        setDate('')
+        setNotes('')
+      }
       router.refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not delete record.')
@@ -121,7 +139,12 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
           )
         })}
       </div>
-      <form onSubmit={save} className="space-y-3">
+      <form id="record-form" onSubmit={save} className="scroll-mt-24 space-y-3">
+        {editingId && (
+          <p className="text-orange-400">
+            Editing an existing record — saving corrects this entry.
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-sm">
             Record
@@ -163,10 +186,11 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
             </select>
           </label>
           <label className="text-sm">
-            Date achieved (blank = today)
+            {editingId ? 'Date achieved' : 'Date achieved (blank = today)'}
             <input
               className={field}
               type="date"
+              required={!!editingId}
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
@@ -186,8 +210,24 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
           disabled={busy}
           className="rounded-lg bg-orange-600 px-4 py-2 disabled:opacity-50"
         >
-          {busy ? 'Saving…' : 'Save Record'}
+          {busy ? 'Saving…' : editingId ? 'Save Correction' : 'Save Record'}
         </button>
+        {editingId && (
+          <button
+            type="button"
+            disabled={busy}
+            className="ml-3 text-sm text-zinc-300"
+            onClick={() => {
+              setEditingId(null)
+              setValue('')
+              setDate('')
+              setNotes('')
+              setError('')
+            }}
+          >
+            Cancel Edit
+          </button>
+        )}
       </form>
       {error && (
         <p role="alert" className="text-red-400">
@@ -216,13 +256,38 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
                   {r.notes ? ` · ${r.notes}` : ''}
                 </p>
               </div>
-              <button
-                disabled={busy}
-                onClick={() => remove(r.id)}
-                className="text-sm text-red-400"
-              >
-                Delete
-              </button>
+              <div className="flex gap-3">
+                <button
+                  disabled={busy}
+                  className="text-sm text-orange-400"
+                  onClick={() => {
+                    setEditingId(r.id)
+                    setKey(r.record_key)
+                    setValue(
+                      r.unit === 'seconds'
+                        ? timeText(Number(r.value))
+                        : String(r.value),
+                    )
+                    if (r.unit !== 'seconds') setUnit(r.unit)
+                    setDate(r.achieved_at)
+                    setNotes(r.notes || '')
+                    setError('')
+                    setMessage('')
+                    document
+                      .getElementById('record-form')
+                      ?.scrollIntoView({ behavior: 'smooth' })
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => remove(r.id)}
+                  className="text-sm text-red-400"
+                >
+                  Delete
+                </button>
+              </div>
             </li>
           ))}
         </ul>

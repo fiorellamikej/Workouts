@@ -28,6 +28,8 @@ export type Prescription = {
   percent: number
   strategy: 'percent' | 'previous'
   increment: number
+  progression_mode?: 'fixed' | 'percentage'
+  comfortable_increment?: number
   unit: 'lb' | 'kg'
   rounding: number
 }
@@ -85,6 +87,22 @@ export function parseDuration(input: string): number | null {
   const total = Number(m[1]) * 60 + Number(m[2])
   return total > 0 && total < 1000000 ? total : null
 }
+export function outcomeText(outcome: ExerciseLog['outcome']) {
+  return outcome === 'hard'
+    ? 'Completed all sets/reps but hard'
+    : outcome === 'comfortable'
+      ? 'Completed all sets/reps but comfortable'
+      : 'Missed sets/reps — repeat or adjust manually'
+}
+export function progressionAmounts(rule: Prescription) {
+  return {
+    hard: rule.increment,
+    comfortable:
+      rule.comfortable_increment ??
+      (rule.increment <= 50 ? rule.increment * 2 : rule.increment),
+    mode: rule.progression_mode ?? 'fixed',
+  }
+}
 export function suggestion(
   rule: Prescription,
   records: AthleteRecord[],
@@ -115,19 +133,36 @@ export function suggestion(
   let value: number
   let basis: string
   if (previous) {
-    value = convertWeight(Number(previous.value), previous.unit, rule.unit)
-    if (previous.outcome === 'comfortable') value += rule.increment
-    basis =
-      previous.outcome === 'comfortable'
-        ? `Last completed load + ${rule.increment} ${rule.unit}`
-        : 'Repeat last load; increase after comfortable completion'
+    const last = convertWeight(Number(previous.value), previous.unit, rule.unit)
+    const amounts = progressionAmounts(rule)
+    if (previous.outcome === 'missed') {
+      value = last
+      basis =
+        'Missed sets/reps: repeat the actual logged load or adjust manually.'
+    } else {
+      const increase =
+        previous.outcome === 'comfortable' ? amounts.comfortable : amounts.hard
+      const target =
+        amounts.mode === 'percentage'
+          ? last * (1 + increase / 100)
+          : last + increase
+      // Round increases down to available total-weight increments; never reduce a manual load.
+      value = Math.max(
+        last,
+        Math.floor((target + 1e-8) / rule.rounding) * rule.rounding,
+      )
+      basis = `Actual logged load + ${increase}${amounts.mode === 'percentage' ? '%' : ` ${rule.unit}`} (${previous.outcome === 'comfortable' ? 'comfortable completion' : 'hard completion'})`
+      if (increase > 0 && value <= last + 1e-8)
+        basis +=
+          '. Rounding leaves the load unchanged; use a smaller weight increment or adjust manually.'
+    }
   } else {
     value = (recordValue(record!, rule.unit) * rule.percent) / 100
     basis = `${rule.percent}% of your ${record!.achieved_at} record (${timed ? 'time' : '1-rep max'})`
+    value = timed
+      ? Math.round(value)
+      : Math.max(0, Math.floor((value + 1e-8) / rule.rounding) * rule.rounding)
   }
-  value = timed
-    ? Math.round(value)
-    : Math.max(0, Math.floor((value + 1e-8) / rule.rounding) * rule.rounding)
   if (value <= 0)
     return {
       value: null,
@@ -172,8 +207,31 @@ export function validatePrescriptions(rules: Prescription[]) {
       return 'Check target percentages, increments, sets, and reps.'
     if (RECORDS[r.record_key].kind === 'weight' && r.percent > 100)
       return 'Lift percentages cannot exceed 100% of the current max.'
+    const amounts = progressionAmounts(r)
+    if (
+      !['fixed', 'percentage'].includes(amounts.mode) ||
+      !Number.isFinite(amounts.comfortable) ||
+      amounts.comfortable < amounts.hard ||
+      amounts.comfortable > 100
+    )
+      return 'The comfortable increase must be at least the hard increase and no more than 100.'
+    if (
+      amounts.mode === 'percentage' &&
+      (amounts.hard > 10 || amounts.comfortable > 10)
+    )
+      return 'Percentage increases must be between 0% and 10%.'
     if (
       r.strategy === 'previous' &&
+      amounts.mode === 'fixed' &&
+      Math.abs(
+        amounts.comfortable / r.rounding -
+          Math.round(amounts.comfortable / r.rounding),
+      ) > 1e-8
+    )
+      return 'Fixed increases must be multiples of the total-weight rounding increment.'
+    if (
+      r.strategy === 'previous' &&
+      amounts.mode === 'fixed' &&
       r.increment > 0 &&
       Math.abs(
         r.increment / r.rounding - Math.round(r.increment / r.rounding),

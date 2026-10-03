@@ -1,3 +1,4 @@
+import { PlanImportPanel } from '@/components/PlanImportPanel'
 import { DeletePlanButton } from '@/components/DeletePlanButton'
 import type { PlanSession } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
@@ -37,7 +38,6 @@ export default async function AdminPlansPage({
       .select('*')
       .eq('id', editId)
       .single()
-
     plan = data
 
     if (plan) {
@@ -46,11 +46,11 @@ export default async function AdminPlansPage({
         .select('*')
         .eq('plan_id', editId)
         .order('order_index', { ascending: true })
-
       sessions = sess || []
     }
   }
 
+  // List all plans
   const { data: allPlans } = await supabase
     .from('training_plans')
     .select('id, title, duration_weeks, is_published, created_at')
@@ -59,17 +59,22 @@ export default async function AdminPlansPage({
   return (
     <div className="space-y-8">
       <div>
-        <Link
-          href="/admin"
-          className="text-sm text-zinc-400 hover:text-white"
-        >
+        <Link href="/admin" className="text-sm text-zinc-400 hover:text-white">
           ← Admin
         </Link>
-
         <h1 className="mt-2 text-3xl font-bold">
           {plan ? `Edit: ${plan.title}` : 'Create Training Plan'}
         </h1>
       </div>
+
+      <PlanImportPanel
+        key={`import-${plan?.id || 'new'}`}
+        source={
+          plan
+            ? { format: 'sword-shield-plan', version: 1, plan, sessions }
+            : undefined
+        }
+      />
 
       <AdminPlanManager
         key={plan?.id || 'new'}
@@ -79,9 +84,8 @@ export default async function AdminPlansPage({
 
       {allPlans && allPlans.length > 0 && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold">All Plans</h2>
-
-          <div className="space-y-4">
+          <h2 className="text-lg font-semibold mb-3">All Plans</h2>
+          <div className="space-y-2">
             {allPlans.map((p) => (
               <div key={p.id} className="space-y-2">
                 <Link
@@ -93,13 +97,11 @@ export default async function AdminPlansPage({
                   }`}
                 >
                   <span className="font-medium">{p.title}</span>
-
                   <span className="text-xs text-zinc-500">
                     {p.duration_weeks}w ·{' '}
                     {p.is_published ? 'Published' : 'Draft'}
                   </span>
                 </Link>
-
                 <DeletePlanButton planId={p.id} title={p.title} />
               </div>
             ))}

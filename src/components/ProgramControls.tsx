@@ -66,6 +66,33 @@ export function ProgramControls({
       setBusy(false)
     }
   }
+  async function leave() {
+    if (
+      !window.confirm(
+        'Leave this program? It will disappear from your active programs. Your results stay saved, and you can rejoin later.',
+      )
+    )
+      return
+    setBusy(true)
+    setError('')
+    try {
+      const { error } = await createClient().rpc('leave_training_program', {
+        p_enrollment: enrollmentId,
+        p_expected_attempt: attempt,
+      })
+      if (error) throw error
+      router.replace('/plans')
+      router.refresh()
+    } catch (e) {
+      setError(
+        e && typeof e === 'object' && 'message' in e
+          ? String(e.message)
+          : 'Could not leave program.',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
   const button = 'rounded-lg bg-zinc-800 px-3 py-2 text-sm disabled:opacity-40'
   return (
     <div className="space-y-3">
@@ -112,6 +139,13 @@ export function ProgramControls({
           onClick={restart}
         >
           Restart Program
+        </button>
+        <button
+          className={button + ' text-red-400'}
+          disabled={busy}
+          onClick={leave}
+        >
+          Leave Program
         </button>
       </div>
       {error && (

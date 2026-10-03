@@ -4,7 +4,9 @@ import Link from 'next/link'
 
 export default async function PlansPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const { data: plans } = await supabase
     .from('training_plans')
@@ -19,6 +21,7 @@ export default async function PlansPage() {
       .from('user_plan_enrollments')
       .select('plan_id, status')
       .eq('user_id', user.id)
+      .eq('is_following', true)
     enrollments = data || []
   }
 
@@ -44,7 +47,11 @@ export default async function PlansPage() {
             return (
               <Link
                 key={plan.id}
-                href={`/plans/${plan.id}`}
+                href={
+                  isEnrolled
+                    ? `/plans/${plan.id}`
+                    : `/plans/${plan.id}/overview`
+                }
                 className="group rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 hover:border-orange-500/50 transition"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -68,17 +75,24 @@ export default async function PlansPage() {
 
                 <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
                   <span className="rounded-full bg-zinc-800 px-2.5 py-1">
-                    {plan.duration_weeks} week{plan.duration_weeks !== 1 ? 's' : ''}
+                    {plan.duration_weeks} week
+                    {plan.duration_weeks !== 1 ? 's' : ''}
                   </span>
                   <span className="rounded-full bg-zinc-800 px-2.5 py-1 capitalize">
                     {plan.difficulty}
                   </span>
                   {plan.tags?.map((tag: string) => (
-                    <span key={tag} className="rounded-full bg-zinc-800 px-2.5 py-1">
+                    <span
+                      key={tag}
+                      className="rounded-full bg-zinc-800 px-2.5 py-1"
+                    >
                       {tag}
                     </span>
                   ))}
                 </div>
+                <p className="mt-4 text-sm font-medium text-orange-400">
+                  {isEnrolled ? 'View progress →' : 'View program overview →'}
+                </p>
               </Link>
             )
           })}

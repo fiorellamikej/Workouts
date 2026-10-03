@@ -2,15 +2,30 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { RECORDS, parseDuration, type Prescription } from '@/lib/training'
+import type { PlanResult } from '@/types/database'
+import {
+  RECORDS,
+  parseDuration,
+  timeText,
+  type ExerciseLog,
+  type Prescription,
+} from '@/lib/training'
 export function LogPlanResultForm({
   enrollmentId,
   sessionId,
   rules = [],
+  attempt,
+  existing,
+  existingLogs = [],
+  planId,
 }: {
   enrollmentId: string
   sessionId: string
   rules?: Prescription[]
+  attempt: number
+  existing?: PlanResult
+  existingLogs?: ExerciseLog[]
+  planId?: string
 }) {
   const [open, setOpen] = useState(false),
     [busy, setBusy] = useState(false),
@@ -64,22 +79,32 @@ export function LogPlanResultForm({
     }
     setBusy(true)
     try {
-      const { error } = await createClient().rpc('complete_training_session', {
-        p_enrollment: enrollmentId,
-        p_session: sessionId,
-        p_result: {
-          completion_time_seconds: seconds,
-          rounds: mode === 'amrap' ? Number(rounds) : null,
-          extra_reps: mode === 'amrap' ? Number(extra || 0) : null,
-          weight_used: weight || null,
-          is_rx: rx,
-          notes: notes || null,
+      const { data: savedId, error } = await createClient().rpc(
+        'save_training_session_result',
+        {
+          p_enrollment: enrollmentId,
+          p_session: sessionId,
+          p_attempt: attempt,
+          p_result_id: existing?.id || null,
+          p_result: {
+            completion_time_seconds: seconds,
+            rounds: mode === 'amrap' ? Number(rounds) : null,
+            extra_reps: mode === 'amrap' ? Number(extra || 0) : null,
+            weight_used: weight || null,
+            is_rx: rx,
+            notes: notes || null,
+          },
+          p_logs: exerciseLogs,
         },
-        p_logs: exerciseLogs,
-      })
+      )
       if (error) throw error
-      router.refresh()
       setOpen(false)
+      if (!existing && planId && savedId)
+        router.replace(
+          `/plans/${planId}?day=${sessionId}&celebrate=${savedId}`,
+          { scroll: true },
+        )
+      else router.refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save workout.')
     } finally {
@@ -89,10 +114,46 @@ export function LogPlanResultForm({
   if (!open)
     return (
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setMode(
+            existing?.completion_time_seconds != null
+              ? 'time'
+              : existing?.rounds != null
+                ? 'amrap'
+                : 'just_done',
+          )
+          setTime(
+            existing?.completion_time_seconds != null
+              ? timeText(existing.completion_time_seconds)
+              : '',
+          )
+          setRounds(existing?.rounds != null ? String(existing.rounds) : '')
+          setExtra(
+            existing?.extra_reps != null ? String(existing.extra_reps) : '',
+          )
+          setWeight(existing?.weight_used || '')
+          setNotes(existing?.notes || '')
+          setRx(existing?.is_rx || false)
+          setLogs(
+            Object.fromEntries(
+              existingLogs.map((l) => [
+                l.prescription_id,
+                {
+                  value:
+                    l.unit === 'seconds'
+                      ? timeText(Number(l.value))
+                      : String(l.value),
+                  outcome: l.outcome,
+                },
+              ]),
+            ),
+          )
+          setError('')
+          setOpen(true)
+        }}
         className="rounded-lg bg-orange-600 px-4 py-2 text-sm"
       >
-        Complete Workout / Log Results
+        {existing ? 'Edit Result' : 'Complete Workout / Log Results'}
       </button>
     )
   return (
@@ -193,17 +254,22 @@ export function LogPlanResultForm({
                   })
                 }
               >
-                <option value="hard">
-                  Completed all sets/reps, but hard — repeat load
-                </option>
+                <option value="hard">Completed all sets/reps but hard</option>
                 <option value="comfortable">
-                  Completed all sets/reps comfortably — eligible to increase
+                  Completed all sets/reps but comfortable
                 </option>
                 <option value="missed">
                   Missed sets/reps — repeat or adjust manually
                 </option>
               </select>
             </label>
+            <p className="text-xs text-zinc-400">
+              Completed means every prescribed rep with good form and intended
+              range of motion. Previous-performance targets use the plan’s
+              standard increase for hard completion, its larger increase for
+              comfortable completion, and repeat the logged load after missed
+              reps.
+            </p>
           </div>
         )
       })}
@@ -242,7 +308,11 @@ export function LogPlanResultForm({
           disabled={busy}
           className="rounded-lg bg-orange-600 px-4 py-2 disabled:opacity-50"
         >
-          {busy ? 'Saving…' : 'Save & Mark Completed'}
+          {busy
+            ? 'Saving…'
+            : existing
+              ? 'Save Corrections'
+              : 'Save & Mark Completed'}
         </button>
         <button
           type="button"

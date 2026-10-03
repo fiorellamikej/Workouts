@@ -5,6 +5,7 @@ import { validatePrescriptions, type Prescription } from '@/lib/training'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 type Plan = {
   id: string
@@ -13,6 +14,9 @@ type Plan = {
   goal: string | null
   duration_weeks: number
   difficulty: string
+  equipment_required?: string[]
+  equipment_suggested?: string[]
+  fitness_guidance?: string | null
   tags: string[] | null
   is_published: boolean
 } | null
@@ -58,6 +62,16 @@ export function AdminPlanManager({
   const [tags, setTags] = useState(existingPlan?.tags?.join(', ') || '')
   const [isPublished, setIsPublished] = useState(
     existingPlan?.is_published ?? true,
+  )
+
+  const [requiredEquipment, setRequiredEquipment] = useState(
+    existingPlan?.equipment_required?.join('\n') || '',
+  )
+  const [suggestedEquipment, setSuggestedEquipment] = useState(
+    existingPlan?.equipment_suggested?.join('\n') || '',
+  )
+  const [fitnessGuidance, setFitnessGuidance] = useState(
+    existingPlan?.fitness_guidance || '',
   )
 
   // Sessions
@@ -143,12 +157,37 @@ export function AdminPlanManager({
       .map((t) => t.trim())
       .filter(Boolean)
 
+    const equipmentList = (value: string) => [
+      ...new Set(
+        value
+          .split('\n')
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    ]
+    const requiredList = equipmentList(requiredEquipment)
+    const suggestedList = equipmentList(suggestedEquipment)
+    if (
+      [requiredList, suggestedList].some(
+        (items) => items.length > 30 || items.some((item) => item.length > 100),
+      ) ||
+      fitnessGuidance.length > 2000
+    ) {
+      setError(
+        'Equipment lists allow 30 entries of up to 100 characters each. Fitness guidance allows 2000 characters.',
+      )
+      setLoading(false)
+      return
+    }
     const planPayload = {
       title,
       description: description || null,
       goal: goal || null,
       duration_weeks: parseInt(durationWeeks) || 4,
       difficulty,
+      equipment_required: requiredList,
+      equipment_suggested: suggestedList,
+      fitness_guidance: fitnessGuidance.trim() || null,
       tags: tagList.length ? tagList : null,
       is_published: isPublished,
       created_by: user.id,
@@ -201,6 +240,14 @@ export function AdminPlanManager({
       {/* Plan details */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 space-y-4">
         <h2 className="text-lg font-semibold">Plan Details</h2>
+        {existingPlan && (
+          <Link
+            href={`/plans/${existingPlan.id}/overview`}
+            className="inline-block text-sm text-orange-400"
+          >
+            Preview program overview →
+          </Link>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-zinc-300 mb-1">
@@ -218,7 +265,7 @@ export function AdminPlanManager({
 
         <div>
           <label className="block text-sm font-medium text-zinc-300 mb-1">
-            Goal / Tagline
+            Program intention / goal
           </label>
           <input
             type="text"
@@ -257,7 +304,7 @@ export function AdminPlanManager({
           </div>
           <div>
             <label className="block text-sm font-medium text-zinc-300 mb-1">
-              Difficulty
+              Suggested fitness level
             </label>
             <select
               value={difficulty}
@@ -282,6 +329,47 @@ export function AdminPlanManager({
             />
           </div>
         </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm text-zinc-300">
+            Required equipment (one item per line)
+            <textarea
+              value={requiredEquipment}
+              onChange={(e) => setRequiredEquipment(e.target.value)}
+              rows={4}
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2"
+              placeholder={
+                'Squat rack with safeties\nBarbell and plates\nFlat bench'
+              }
+            />
+          </label>
+          <label className="block text-sm text-zinc-300">
+            Suggested equipment (one item per line)
+            <textarea
+              value={suggestedEquipment}
+              onChange={(e) => setSuggestedEquipment(e.target.value)}
+              rows={4}
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2"
+              placeholder={'Microplates\nLifting belt'}
+            />
+          </label>
+        </div>
+        <p className="text-xs text-zinc-400">
+          List alternatives together, for example “Bike, rower, or treadmill.”
+          Blank lists show “Not specified” on the overview. Enter “None —
+          bodyweight only” when no equipment is needed.
+        </p>
+        <label className="block text-sm text-zinc-300">
+          Fitness level / experience guidance
+          <textarea
+            value={fitnessGuidance}
+            onChange={(e) => setFitnessGuidance(e.target.value)}
+            rows={3}
+            maxLength={2000}
+            className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2"
+            placeholder="Who is this suitable for? Describe expected training experience or prerequisites."
+          />
+        </label>
 
         <label className="flex items-center gap-2 text-sm text-zinc-300">
           <input

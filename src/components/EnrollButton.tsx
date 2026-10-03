@@ -4,7 +4,13 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
-export function EnrollButton({ planId }: { planId: string }) {
+export function EnrollButton({
+  planId,
+  label = 'Start Program',
+}: {
+  planId: string
+  label?: string
+}) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -33,6 +39,7 @@ export function EnrollButton({ planId }: { planId: string }) {
       return
     }
 
+    router.push(`/plans/${planId}`)
     router.refresh()
     setLoading(false)
   }
@@ -44,7 +51,7 @@ export function EnrollButton({ planId }: { planId: string }) {
         disabled={loading}
         className="rounded-lg bg-orange-600 px-5 py-2.5 font-medium text-white hover:bg-orange-500 disabled:opacity-50 transition"
       >
-        {loading ? 'Starting...' : 'Start This Plan'}
+        {loading ? 'Starting...' : label}
       </button>
       {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
     </div>
