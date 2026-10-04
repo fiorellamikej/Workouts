@@ -130,10 +130,10 @@ export function validateEntries(entries: ExerciseEntry[]) {
 export function definitionsFromText(
   description: string | null | undefined,
 ): ExerciseDefinition[] {
-  if (!description || /OPTION\s+[A-Z]\s*[—–-]/i.test(description)) return [];
+  if (!description || /OPTION\s+[A-Z]\s*[\u2014–-]/i.test(description)) return [];
   const rows: ExerciseDefinition[] = [];
   for (const line of description.split("\n")) {
-    const row = line.match(/^\s*(\d+)\.\s+(.+?)\s+[–—]\s+(.+)$/);
+    const row = line.match(/^\s*(\d+)\.\s+(.+?)\s+[–\u2014-]\s+(.+)$/);
     if (!row) continue;
     const volume = row[3].match(
       /(?:^|\s)(\d+)\s*[×x]\s*(\d+)(?:\s*[–-]\s*(\d+))?/,

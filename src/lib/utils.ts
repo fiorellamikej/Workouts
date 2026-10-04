@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatTime(seconds: number | null | undefined): string {
-  if (seconds == null) return '—'
+  if (seconds == null) return 'N/A'
   const mins = Math.floor(seconds / 60)
   const secs = seconds % 60
   return `${mins}:${secs.toString().padStart(2, '0')}`

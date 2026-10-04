@@ -260,7 +260,7 @@ export function AdminWorkoutForm() {
           ) : (
             <div role="group" aria-label="Confirm WOD deletion" className="space-y-3 rounded-lg border border-red-800 bg-red-950/20 p-4">
               <p className="font-medium text-red-300">Delete {title} on {workoutDate}?</p>
-              <p className="text-sm text-zinc-300">This permanently removes the daily WOD and all results and exercise logs linked to it, including other users' entries. This cannot be undone. Hero WODs and training plans are separate.</p>
+              <p className="text-sm text-zinc-300">This permanently removes the daily WOD and all results and exercise logs linked to it, including other users&apos; entries. This cannot be undone. Hero WODs and training plans are separate.</p>
               <div className="flex flex-wrap gap-3">
                 <button type="button" disabled={loading} onClick={handleDelete} className="rounded-lg bg-red-700 px-4 py-2 text-white disabled:opacity-50">{loading ? 'Deleting...' : 'Permanently delete WOD'}</button>
                 <button type="button" disabled={loading} onClick={() => setConfirmDelete(false)} className="rounded-lg border border-zinc-600 px-4 py-2 disabled:opacity-50">Cancel</button>

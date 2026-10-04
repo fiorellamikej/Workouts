@@ -92,7 +92,7 @@ export function outcomeText(outcome: ExerciseLog['outcome']) {
     ? 'Completed all sets/reps but hard'
     : outcome === 'comfortable'
       ? 'Completed all sets/reps but comfortable'
-      : 'Missed sets/reps — repeat or adjust manually'
+      : 'Missed sets/reps  -  repeat or adjust manually'
 }
 export function progressionAmounts(rule: Prescription) {
   return {
