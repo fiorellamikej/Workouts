@@ -1,4 +1,5 @@
 "use client";
+import { loadingGuidance } from "@/lib/loading-guidance";
 import { reportAppError } from "@/lib/report-error";
 import { useState } from "react";
 import { ExerciseSetLogger } from "./ExerciseSetLogger";
@@ -319,6 +320,16 @@ export function LogPlanResultForm({
                 </option>
               </select>
             </label>
+            <details className="text-sm text-zinc-300">
+              <summary className="cursor-pointer text-orange-300">
+                Loading and next-session guidance
+              </summary>
+              <ul className="mt-2 list-disc space-y-2 pl-5">
+                {loadingGuidance(r).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </details>
             <p className="text-xs text-zinc-400">
               Completed means every prescribed rep with good form and intended
               range of motion. Previous-performance targets use the plan’s

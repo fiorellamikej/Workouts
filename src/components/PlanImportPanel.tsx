@@ -1,4 +1,7 @@
 "use client";
+import { reviewPlan } from "@/lib/plan-review";
+import { RECORDS } from "@/lib/training";
+import { loadingGuidance } from "@/lib/loading-guidance";
 import { reportAppError } from "@/lib/report-error";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,15 +14,18 @@ import {
 
 export function PlanImportPanel({ source }: { source?: unknown }) {
   const router = useRouter();
+  const [expandAll, setExpandAll] = useState(false);
   const [preview, setPreview] = useState<PlanImport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reviewed, setReviewed] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const lock = useRef(false);
+  const review = preview ? reviewPlan(preview) : null;
   const field = "w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2";
   const load = (data: PlanImport) => {
     setPreview(data);
+    setExpandAll(false);
     setError(null);
     setReviewed(false);
     setSaved(null);
@@ -164,11 +170,57 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
             {preview.sessions.reduce((n, s) => n + s.prescriptions.length, 0)}{" "}
             personalized targets · Saved as draft
           </p>
-          {preview.review_notes.length > 0 && (
+          {review && (
+            <div className="rounded border border-zinc-700 p-4 text-sm space-y-2">
+              <p>
+                {review.counts.workout} workouts · {review.counts.rest} explicit
+                rest days · {review.counts.recovery} recovery days ·{" "}
+                {review.counts.test} tests
+              </p>
+              <p>
+                {review.exercises} exercise log definitions · {review.targets}{" "}
+                personalized targets · {review.textOnly} non-rest sessions with
+                text only
+              </p>
+              <p>
+                Profile records needed:{" "}
+                {review.references.map((k) => RECORDS[k].label).join(", ") ||
+                  "None"}
+              </p>
+              <p>
+                Saving creates an unpublished draft. Publish it separately after
+                checking the editor.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <caption className="text-left font-medium">
+                    Schedule coverage (day numbers within each week)
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th className="py-2">Week</th>
+                      <th>Sessions</th>
+                      <th>Unlisted days</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {review.weeks.map((w) => (
+                      <tr key={w.number}>
+                        <td>{w.number}</td>
+                        <td>{w.sessions.length}</td>
+                        <td>{w.missing.join(", ") || "None"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {review && review.warnings.length > 0 && (
             <div className="space-y-2 rounded border border-yellow-800 p-3 text-sm text-yellow-200">
               <p className="font-semibold">Review before saving</p>
               <ul className="list-disc space-y-1 pl-5">
-                {preview.review_notes.map((note, i) => (
+                {review.warnings.map((note, i) => (
                   <li key={i}>{note}</li>
                 ))}
               </ul>
@@ -202,10 +254,18 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
               {preview.plan.equipment_suggested.join("; ") || "Not specified"}
             </p>
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={expandAll}
+              onChange={(e) => setExpandAll(e.target.checked)}
+            />
+            Expand every week for review
+          </label>
           <div className="max-h-[32rem] space-y-3 overflow-y-auto rounded border border-zinc-700 p-3">
             {[...new Set(preview.sessions.map((s) => s.week_number))].map(
               (week) => (
-                <details key={week} open={week === 1}>
+                <details key={week} open={expandAll || week === 1}>
                   <summary className="cursor-pointer font-medium">
                     Week {week}
                   </summary>
@@ -218,7 +278,7 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
                           className="space-y-2 rounded border border-zinc-700 p-3"
                         >
                           <h3 className="font-medium">
-                            Day {s.day_number}: {s.title}
+                            Day {s.day_number}: {s.title} · {s.session_type}
                           </h3>
                           <p className="whitespace-pre-wrap text-sm text-zinc-300">
                             {s.description}
@@ -237,14 +297,17 @@ export function PlanImportPanel({ source }: { source?: unknown }) {
                             </p>
                           ))}
                           {s.prescriptions.map((r) => (
-                            <p className="text-xs text-orange-300" key={r.id}>
-                              {r.label} · {r.sets} × {r.reps} · Starting{" "}
-                              {r.percent}% ·{" "}
-                              {r.strategy === "previous"
-                                ? `${r.progression_mode || "fixed"} progression; hard ${r.increment}, comfortable ${r.comfortable_increment ?? r.increment * 2}`
-                                : "Prescribed percentage of profile record"}{" "}
-                              · {r.unit} · Rounding {r.rounding}
-                            </p>
+                            <div className="text-xs text-orange-300" key={r.id}>
+                              <p>
+                                {r.label} · {r.sets} × {r.reps} · Reference:{" "}
+                                {RECORDS[r.record_key].label}
+                              </p>
+                              <ul className="mt-1 list-disc space-y-1 pl-5">
+                                {loadingGuidance(r).map((line) => (
+                                  <li key={line}>{line}</li>
+                                ))}
+                              </ul>
+                            </div>
                           ))}
                         </article>
                       ))}

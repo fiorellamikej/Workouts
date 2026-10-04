@@ -59,6 +59,10 @@ export async function Navbar() {
             Exercises
           </Link>
 
+          <Link href="/heroes" className="text-zinc-300 hover:text-white">
+            Hero WODs
+          </Link>
+
           {user && (
             <Link
               href="/leaderboard"

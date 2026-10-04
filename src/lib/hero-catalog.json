@@ -1,0 +1,261 @@
+[
+  {
+    "slug": "white",
+    "name": "White",
+    "honoree": "U.S. Army 1st Lt. Ashley White",
+    "score_type": "for_time",
+    "instructions": [
+      "Complete 5 rounds. Each round: 3 rope climbs (15 ft), 10 toes-to-bars, 21 overhead walking-lunge steps, then a 400 m run."
+    ],
+    "rx": "Plate: women 25 lb; men 45 lb.",
+    "equipment": ["Rope", "Pull-up bar", "Weight plate", "Running route"],
+    "source": "https://www.crossfit.com/benchmark/white-hero",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "nutts",
+    "name": "Nutts",
+    "honoree": "Canadian Armed Forces Lt. Andrew Richard Nuttall",
+    "score_type": "for_time",
+    "instructions": [
+      "Complete in order: 10 handstand push-ups; 15 deadlifts; 25 box jumps; 50 pull-ups; 100 wall-ball shots; 200 double-unders; then run 400 m carrying a plate."
+    ],
+    "rx": "Women: deadlift 175 lb, box 24 in, ball 14 lb to 9 ft, plate 25 lb. Men: deadlift 250 lb, box 30 in, ball 20 lb to 10 ft, plate 45 lb.",
+    "equipment": [
+      "Barbell",
+      "Box",
+      "Pull-up bar",
+      "Wall ball",
+      "Jump rope",
+      "Weight plate",
+      "Running route"
+    ],
+    "source": "https://www.crossfit.com/benchmark/nutts",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "murph",
+    "name": "Murph",
+    "honoree": "U.S. Navy Lt. Michael Murphy",
+    "score_type": "for_time",
+    "instructions": [
+      "Run 1 mile, complete 100 pull-ups, 200 push-ups and 300 air squats, then run another mile.",
+      "The middle three movements may be partitioned; the runs bookend the workout."
+    ],
+    "rx": "Weighted vest if available: women 14 lb; men 20 lb.",
+    "equipment": [
+      "Pull-up bar",
+      "Running route",
+      "Weighted vest (if available)"
+    ],
+    "source": "https://www.crossfit.com/benchmark/murph",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "dt",
+    "name": "DT",
+    "honoree": "U.S. Air Force Staff Sgt. Timothy P. Davis",
+    "score_type": "for_time",
+    "instructions": [
+      "Complete 5 rounds: 12 deadlifts, 9 hang power cleans and 6 push jerks per round."
+    ],
+    "rx": "Barbell: women 105 lb; men 155 lb.",
+    "equipment": ["Barbell"],
+    "source": "https://www.crossfit.com/benchmark/dt-new",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "jt",
+    "name": "JT",
+    "honoree": "U.S. Navy Petty Officer 1st Class Jeff Taylor",
+    "score_type": "for_time",
+    "instructions": [
+      "Three rounds with 21, then 15, then 9 reps of each: handstand push-ups, ring dips and push-ups."
+    ],
+    "rx": "Bodyweight movements.",
+    "equipment": ["Rings", "Wall space"],
+    "source": "https://www.crossfit.com/benchmark/jt",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "kalsu",
+    "name": "Kalsu",
+    "honoree": "U.S. Army 1st Lt. James Robert Kalsu",
+    "score_type": "for_time",
+    "instructions": [
+      "Accumulate 100 thrusters. At the start of every minute, including the first minute, perform 5 burpees before returning to thrusters."
+    ],
+    "rx": "Barbell: women 95 lb; men 135 lb.",
+    "equipment": ["Barbell"],
+    "source": "https://buffalonickelcrossfit.com/kalsu-the-wod-the-man-the-legend/",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "randy",
+    "name": "Randy",
+    "honoree": "LAPD Officer Randy Simmons",
+    "score_type": "for_time",
+    "instructions": ["Accumulate 75 power snatches."],
+    "rx": "Barbell: women 55 lb; men 75 lb.",
+    "equipment": ["Barbell"],
+    "source": "https://www.crossfit.com/benchmark/randy",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "michael",
+    "name": "Michael",
+    "honoree": "U.S. Navy Lt. Michael McGreevy",
+    "score_type": "for_time",
+    "instructions": [
+      "Complete 3 rounds: run 800 m, do 50 back extensions, then 50 sit-ups."
+    ],
+    "rx": "Bodyweight movements.",
+    "equipment": ["Back-extension station", "Running route"],
+    "source": "https://www.crossfit.com/benchmark/michael",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "nate",
+    "name": "Nate",
+    "honoree": "U.S. Navy Chief Nate Hardy",
+    "score_type": "amrap",
+    "instructions": [
+      "For 20 minutes, repeat: 2 muscle-ups, 4 handstand push-ups and 8 kettlebell swings."
+    ],
+    "rx": "Kettlebell: women 53 lb; men 70 lb.",
+    "equipment": ["Rings", "Wall space", "Kettlebell"],
+    "source": "https://www.crossfit.com/benchmark/nate",
+    "minutes": 20,
+    "round_reps": 14
+  },
+  {
+    "slug": "chad",
+    "name": "Chad 1000X",
+    "honoree": "U.S. Navy Senior Chief Chad Wilkinson",
+    "score_type": "for_time",
+    "instructions": [
+      "Accumulate 1,000 weighted box step-ups using a 20-inch box."
+    ],
+    "rx": "Rucksack: women 35 lb; men 45 lb.",
+    "equipment": ["Box", "Rucksack"],
+    "source": "https://www.crossfit.com/chad-hero-workout",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "mr-joshua",
+    "name": "Mr. Joshua",
+    "honoree": "U.S. Navy Petty Officer 1st Class Joshua Thomas Harris",
+    "score_type": "for_time",
+    "instructions": [
+      "Complete 5 rounds: run 400 m, do 30 GHD sit-ups and 15 deadlifts."
+    ],
+    "rx": "Barbell: women 175 lb; men 250 lb.",
+    "equipment": ["Barbell", "GHD", "Running route"],
+    "source": "https://www.crossfit.com/benchmark/mr-joshua",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "mcghee",
+    "name": "McGhee",
+    "honoree": "U.S. Army Cpl. Ryan C. McGhee",
+    "score_type": "amrap",
+    "instructions": [
+      "For 30 minutes, repeat: 5 deadlifts, 13 push-ups and 9 box jumps."
+    ],
+    "rx": "Women: barbell 185 lb, box 20 in. Men: barbell 275 lb, box 24 in.",
+    "equipment": ["Barbell", "Box"],
+    "source": "https://www.crossfit.com/benchmark/mcghee",
+    "minutes": 30,
+    "round_reps": 27
+  },
+  {
+    "slug": "the-seven",
+    "name": "The Seven",
+    "honoree": "Seven CIA personnel killed at Khost, Afghanistan, in 2009",
+    "score_type": "for_time",
+    "instructions": [
+      "Complete 7 rounds, with 7 reps of each: handstand push-ups, thrusters, knees-to-elbows, deadlifts, burpees, kettlebell swings and pull-ups."
+    ],
+    "rx": "Women: thruster 95 lb, deadlift 165 lb, kettlebell 53 lb. Men: thruster 135 lb, deadlift 245 lb, kettlebell 70 lb.",
+    "equipment": ["Barbell", "Pull-up bar", "Wall space", "Kettlebell"],
+    "source": "https://www.crossfit.com/benchmark/the-seven-new",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "ryan",
+    "name": "Ryan",
+    "honoree": "Maplewood firefighter Ryan Hummert",
+    "score_type": "for_time",
+    "instructions": ["Complete 5 rounds: 7 muscle-ups and 21 burpees."],
+    "rx": "Bodyweight movements.",
+    "equipment": ["Rings"],
+    "source": "https://www.crossfit.com/benchmark/ryan",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "jason",
+    "name": "Jason",
+    "honoree": "U.S. Navy Petty Officer 1st Class Jason Dale Lewis",
+    "score_type": "for_time",
+    "instructions": [
+      "Work through these pairs in order: 100 air squats / 5 muscle-ups; 75 air squats / 10 muscle-ups; 50 air squats / 15 muscle-ups; 25 air squats / 20 muscle-ups."
+    ],
+    "rx": "Bodyweight movements.",
+    "equipment": ["Rings"],
+    "source": "https://www.crossfit.com/benchmark/jason",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "badger",
+    "name": "Badger",
+    "honoree": "U.S. Navy Chief Petty Officer Mark Carter",
+    "score_type": "for_time",
+    "instructions": [
+      "Complete 3 rounds: 30 squat cleans, 30 pull-ups and an 800 m run."
+    ],
+    "rx": "Barbell: women 65 lb; men 95 lb.",
+    "equipment": ["Barbell", "Pull-up bar", "Running route"],
+    "source": "https://www.crossfit.com/benchmark/badger",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "manion",
+    "name": "Manion",
+    "honoree": "U.S. Marine Corps 1st Lt. Travis Manion",
+    "score_type": "for_time",
+    "instructions": ["Complete 7 rounds: run 400 m, then do 29 back squats."],
+    "rx": "Barbell: women 95 lb; men 135 lb.",
+    "equipment": ["Barbell", "Squat rack", "Running route"],
+    "source": "https://www.crossfit.com/benchmark/manion",
+    "minutes": null,
+    "round_reps": null
+  },
+  {
+    "slug": "donny",
+    "name": "Donny",
+    "honoree": "U.S. Army Spc. Donald L. Nichols",
+    "score_type": "for_time",
+    "instructions": [
+      "Six rounds: 21, 15, 9, 9, 15 and 21 reps of both deadlifts and burpees."
+    ],
+    "rx": "Barbell: women 155 lb; men 225 lb.",
+    "equipment": ["Barbell"],
+    "source": "https://www.crossfit.com/benchmark/donny",
+    "minutes": null,
+    "round_reps": null
+  }
+]

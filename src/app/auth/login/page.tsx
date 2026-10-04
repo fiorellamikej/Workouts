@@ -47,7 +47,12 @@ export default function LoginPage() {
       }
       // A fresh navigation reads the newly written session cookies and avoids
       // both the intro screen and previously cached signed-out page content.
-      window.location.replace("/dashboard");
+      const next = new URLSearchParams(window.location.search).get("next");
+      // Hero detail pages may return athletes directly to the workout they opened.
+      // Only this local route pattern is accepted; ordinary logins go home.
+      window.location.replace(
+        next && /^\/heroes\/[a-z0-9-]+$/.test(next) ? next : "/dashboard",
+      );
       navigating = true;
     } catch {
       setError("Could not log in. Check your connection and try again.");
