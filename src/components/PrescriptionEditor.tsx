@@ -266,7 +266,7 @@ export function PrescriptionEditor({
                         Percentages apply to the actual logged weight, not the
                         profile max. Rounded percentage targets may remain
                         unchanged; users can adjust manually. Changing the unit
-                        or method resets increase amounts—review them before
+                        or method resets increase amounts - review them before
                         saving.
                       </p>
                     </>

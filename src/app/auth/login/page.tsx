@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { AccountAccessNotice } from "@/components/AccountAccessNotice";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -136,6 +137,7 @@ export default function LoginPage() {
           Sign up
         </Link>
       </p>
+      <AccountAccessNotice />
     </div>
   );
 }

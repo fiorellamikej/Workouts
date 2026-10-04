@@ -373,7 +373,7 @@ export function AdminPlanManager({
         </div>
         <p className="text-xs text-zinc-400">
           List alternatives together, for example “Bike, rower, or treadmill.”
-          Blank lists show “Not specified” on the overview. Enter “None —
+          Blank lists show “Not specified” on the overview. Enter “None  - 
           bodyweight only” when no equipment is needed.
         </p>
         <label className="block text-sm text-zinc-300">

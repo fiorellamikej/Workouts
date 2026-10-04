@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { AccountAccessNotice } from "@/components/AccountAccessNotice";
 
 export default function SignupPage() {
   const [mailingOptIn, setMailingOptIn] = useState(false);
@@ -145,6 +146,7 @@ export default function SignupPage() {
           Log in
         </Link>
       </p>
+      <AccountAccessNotice />
     </div>
   );
 }

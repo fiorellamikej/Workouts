@@ -131,7 +131,7 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
             <div key={k} className="rounded-lg bg-zinc-800/60 p-3">
               <p className="text-sm text-zinc-400">{RECORDS[k].label}</p>
               <p className="text-xl font-semibold">
-                {best ? renderValue(best) : "—"}
+                {best ? renderValue(best) : "N/A"}
               </p>
               {latest && (
                 <p className="text-xs text-zinc-400">
@@ -145,7 +145,7 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
       <form id="record-form" onSubmit={save} className="scroll-mt-24 space-y-3">
         {editingId && (
           <p className="text-orange-400">
-            Editing an existing record — saving corrects this entry.
+            Editing an existing record  -  saving corrects this entry.
           </p>
         )}
         <div className="grid gap-3 sm:grid-cols-2">

@@ -113,7 +113,7 @@ export function ProgramControls({
           </option>
           {sessions.map((s) => (
             <option key={s.id} value={s.id}>
-              Week {s.week_number}, day {s.day_number} — {s.title}
+              Week {s.week_number}, day {s.day_number}  -  {s.title}
             </option>
           ))}
         </select>

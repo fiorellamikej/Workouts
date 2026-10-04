@@ -1,3 +1,4 @@
+import { GettingStarted } from "@/components/GettingStarted";
 import { ContinuePlans } from "@/components/ContinuePlans";
 import { PersonalizedTargets } from "@/components/PersonalizedTargets";
 import type { AthleteRecord } from "@/lib/training";
@@ -14,6 +15,10 @@ export default async function HomePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const { data: onboarding } = user
+    ? await supabase.from("user_onboarding").select("dismissed_at").eq("user_id", user.id).maybeSingle()
+    : { data: null };
 
   const { data: records, error: recordsError } = user
     ? await supabase
@@ -74,6 +79,7 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-8">
+      {user && <GettingStarted key={user.id} initiallyDismissed={!!onboarding?.dismissed_at} />}
       {user && <ContinuePlans userId={user.id} />}
 
       <div>

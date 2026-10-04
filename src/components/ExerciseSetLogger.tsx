@@ -114,8 +114,8 @@ export function ExerciseSetLogger({
                 </p>
                 {last.entry.sets.map((s, n) => (
                   <span className="mr-3 inline-block" key={n}>
-                    Set {n + 1}: {s.reps ?? "—"} reps ·{" "}
-                    {s.weight == null ? "—" : `${s.weight} ${last.entry.unit}`}{" "}
+                    Set {n + 1}: {s.reps ?? "N/A"} reps ·{" "}
+                    {s.weight == null ? "N/A" : `${s.weight} ${last.entry.unit}`}{" "}
                     {s.rpe != null ? `· RPE ${s.rpe}` : ""}
                     {s.completed ? " ✓" : ""}
                   </span>

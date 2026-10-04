@@ -195,7 +195,7 @@ export function HeroResultLog({
                 className="mt-1 h-5 w-5"
               />
               <span>
-                Rx — completed the prescribed movements, volume and loading
+                Rx  -  completed the prescribed movements, volume and loading
                 above.
               </span>
             </label>

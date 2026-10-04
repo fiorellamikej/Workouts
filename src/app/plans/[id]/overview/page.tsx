@@ -81,7 +81,7 @@ export default async function ProgramOverviewPage({
         </p>
         {!plan.is_published && (
           <p className="mt-2 text-sm text-yellow-400">
-            Draft — visible to admins.
+            Draft  -  visible to admins.
           </p>
         )}
       </header>

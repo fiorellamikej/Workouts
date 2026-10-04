@@ -4,15 +4,15 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 const COMMON_TIMEZONES = [
-  { value: "America/New_York", label: "Eastern Time — New York" },
-  { value: "America/Chicago", label: "Central Time — Chicago" },
-  { value: "America/Denver", label: "Mountain Time — Denver" },
-  { value: "America/Phoenix", label: "Arizona — Phoenix (no daylight saving)" },
-  { value: "America/Los_Angeles", label: "Pacific Time — Los Angeles" },
-  { value: "America/Anchorage", label: "Alaska — Anchorage" },
+  { value: "America/New_York", label: "Eastern Time  -  New York" },
+  { value: "America/Chicago", label: "Central Time  -  Chicago" },
+  { value: "America/Denver", label: "Mountain Time  -  Denver" },
+  { value: "America/Phoenix", label: "Arizona  -  Phoenix (no daylight saving)" },
+  { value: "America/Los_Angeles", label: "Pacific Time  -  Los Angeles" },
+  { value: "America/Anchorage", label: "Alaska  -  Anchorage" },
   {
     value: "Pacific/Honolulu",
-    label: "Hawaii — Honolulu (no daylight saving)",
+    label: "Hawaii  -  Honolulu (no daylight saving)",
   },
   { value: "UTC", label: "UTC" },
 ];

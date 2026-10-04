@@ -216,7 +216,7 @@ export default async function PlanDetailPage({
               {enrollment.current_attempt > 1 && (
                 <div className="space-y-2">
                   <p className="text-sm text-zinc-400">
-                    Run history — earlier results stay separate from current
+                    Run history  -  earlier results stay separate from current
                     progression.
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -376,9 +376,9 @@ export default async function PlanDetailPage({
                                 <p className="font-medium">{e.label}</p>
                                 {e.sets.map((s, i) => (
                                   <p key={i}>
-                                    Set {i + 1}: {s.reps ?? "—"} reps ·{" "}
+                                    Set {i + 1}: {s.reps ?? "N/A"} reps ·{" "}
                                     {s.weight == null
-                                      ? "—"
+                                      ? "N/A"
                                       : `${s.weight} ${e.unit}`}
                                     {s.rpe != null ? ` · RPE ${s.rpe}` : ""}
                                     {s.completed ? " ✓" : ""}

@@ -80,6 +80,7 @@ export type BadgeSummary = {
   checkin_streak: number;
   calendar_span: number;
   completed_workouts: number;
+  hero_completed_workouts?: number;
   timezone: string;
   badges: BadgeAward[];
 };

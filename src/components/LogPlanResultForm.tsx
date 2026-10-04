@@ -316,7 +316,7 @@ export function LogPlanResultForm({
                   Completed all sets/reps but comfortable
                 </option>
                 <option value="missed">
-                  Missed sets/reps — repeat or adjust manually
+                  Missed sets/reps  -  repeat or adjust manually
                 </option>
               </select>
             </label>

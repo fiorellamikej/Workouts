@@ -29,7 +29,7 @@ export function BadgeCollection({
   const earned = new Map(summary.badges.map((b) => [b.badge_key, b]));
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-xl border border-orange-900 bg-orange-950/20 p-4">
           <p className="text-3xl font-bold text-orange-400">
             {earned.size}/{BADGES.length}
@@ -45,7 +45,15 @@ export function BadgeCollection({
         </div>
         <div className="rounded-xl border border-zinc-800 p-4">
           <p className="text-3xl font-bold">{summary.completed_workouts}</p>
-          <p className="text-sm text-zinc-400">Saved workout completions</p>
+          <p className="text-sm text-zinc-400">Completed workouts</p>
+          <p className="text-xs text-zinc-500">Programs and Daily WODs</p>
+        </div>
+        <div className="rounded-xl border border-zinc-800 p-4">
+          <p className="text-3xl font-bold">
+            {summary.hero_completed_workouts ?? "N/A"}
+          </p>
+          <p className="text-sm text-zinc-400">Hero WOD completions</p>
+          <p className="text-xs text-zinc-500">Tracked separately</p>
         </div>
       </div>
       <p className="text-sm text-zinc-400">
