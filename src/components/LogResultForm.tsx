@@ -51,6 +51,7 @@ export function LogResultForm({ workoutId, workoutType, existing }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (workoutType === "rest" || loading) return;
     const savedEntries = entriesForSave(entries);
     const invalid = validateEntries(savedEntries);
     if (invalid) {
@@ -74,7 +75,7 @@ export function LogResultForm({ workoutId, workoutType, existing }: Props) {
         user_id: user.id,
         workout_id: workoutId,
         completion_time_seconds:
-          workoutType === "amrap" ? null : parseTimeInput(timeInput),
+          workoutType === "amrap" ? null : workoutType === "for_time" ? parseTimeInput(timeInput) : existing?.completion_time_seconds ?? null,
         rounds: workoutType === "amrap" ? parseInt(rounds) || null : null,
         extra_reps:
           workoutType === "amrap" ? parseInt(extraReps) || null : null,
@@ -109,6 +110,8 @@ export function LogResultForm({ workoutId, workoutType, existing }: Props) {
     }
   };
 
+  if (workoutType === "rest") return <p>No workout result is needed on a rest day.</p>;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {workoutType === "amrap" ? (
@@ -138,7 +141,7 @@ export function LogResultForm({ workoutId, workoutType, existing }: Props) {
             />
           </div>
         </div>
-      ) : (
+      ) : workoutType === "for_time" ? (
         <div>
           <label className="block text-sm font-medium text-zinc-300 mb-1">
             Time (mm:ss)
@@ -151,7 +154,7 @@ export function LogResultForm({ workoutId, workoutType, existing }: Props) {
             placeholder="12:34"
           />
         </div>
-      )}
+      ) : <p className="text-sm text-zinc-300">Log your sets, loads, intervals, or skill work below. No finish-time score is required for this workout type.</p>}
 
       <ExerciseSetLogger
         entries={entries}

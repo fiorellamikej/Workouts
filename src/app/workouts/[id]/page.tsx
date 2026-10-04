@@ -1,3 +1,5 @@
+import { WodPhaseGuide } from "@/components/WodPhaseGuide";
+import type { WodPhase } from "@/lib/daily-wod";
 import { PersonalizedTargets } from "@/components/PersonalizedTargets";
 import type { AthleteRecord } from "@/lib/training";
 import type { ResultWithProfile } from "@/types/database";
@@ -25,6 +27,11 @@ export default async function WorkoutDetailPage({
     .single();
 
   if (!workout) notFound();
+
+  const { data: phase, error: phaseError } = workout.phase_id
+    ? await supabase.from("daily_wod_phases").select("id,phase_key,start_date,end_date").eq("id", workout.phase_id).maybeSingle<WodPhase>()
+    : { data: null, error: null };
+  if (phaseError) throw new Error("Could not load the Daily WOD phase. Please reload.");
 
   const { data: records, error: recordsError } = user
     ? await supabase
@@ -86,6 +93,8 @@ export default async function WorkoutDetailPage({
         <p className="mt-1 text-zinc-400">{formatDate(workout.workout_date)}</p>
       </div>
 
+      <WodPhaseGuide phase={phase} date={workout.workout_date} />
+
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
         <span className="inline-block rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs font-medium uppercase text-zinc-300">
           {workout.workout_type.replace("_", " ")}
@@ -114,7 +123,9 @@ export default async function WorkoutDetailPage({
         )}
       </div>
 
-      {user ? (
+      {workout.workout_type === "rest" ? (
+        <p className="rounded-xl border border-zinc-800 p-6 text-zinc-300">This is a scheduled rest day. No workout result is required.</p>
+      ) : user ? (
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
           <h3 className="text-lg font-semibold mb-4">
             {userResult ? "Your Result" : "Log Your Result"}

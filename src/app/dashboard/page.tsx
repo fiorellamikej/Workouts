@@ -1,3 +1,5 @@
+import { wodToday, type WodPhase } from "@/lib/daily-wod";
+import { WodPhaseGuide } from "@/components/WodPhaseGuide";
 import { GettingStarted } from "@/components/GettingStarted";
 import { ContinuePlans } from "@/components/ContinuePlans";
 import { PersonalizedTargets } from "@/components/PersonalizedTargets";
@@ -10,7 +12,7 @@ import { LogResultForm } from "@/components/LogResultForm";
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = wodToday();
 
   const {
     data: { user },
@@ -33,6 +35,9 @@ export default async function HomePage() {
     .select("*")
     .eq("workout_date", today)
     .single();
+
+  const { data: phase, error: phaseError } = await supabase.from("daily_wod_phases").select("id,phase_key,start_date,end_date").lte("start_date", today).gte("end_date", today).maybeSingle<WodPhase>();
+  if (phaseError) throw new Error("Could not load Daily WOD phase. Check the new migration and reload.");
 
   let userResult = null;
   if (user && workout) {
@@ -86,6 +91,8 @@ export default async function HomePage() {
         <h1 className="text-3xl font-bold tracking-tight">Today&apos;s WOD</h1>
         <p className="mt-1 text-zinc-400">{formatDate(today)}</p>
       </div>
+
+      <WodPhaseGuide phase={phase} date={today} />
 
       {!workout ? (
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-8 text-center">
@@ -164,7 +171,9 @@ export default async function HomePage() {
           </div>
 
           {/* Log Result */}
-          {user ? (
+          {workout.workout_type === "rest" ? (
+            <p className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 text-zinc-300">Rest is part of the schedule. No workout result is needed today. Optional walking or mobility is described above.</p>
+          ) : user ? (
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
               <h3 className="text-lg font-semibold mb-4">
                 {userResult ? "Your Result" : "Log Your Result"}

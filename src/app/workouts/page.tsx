@@ -1,3 +1,4 @@
+import { wodToday } from "@/lib/daily-wod";
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -8,6 +9,7 @@ export default async function WorkoutsPage() {
   const { data: workouts } = await supabase
     .from('workouts')
     .select('*')
+    .lte('workout_date', wodToday())
     .order('workout_date', { ascending: false })
     .limit(30)
 

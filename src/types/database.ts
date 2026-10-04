@@ -1,3 +1,4 @@
+import type { WodType } from "@/lib/daily-wod";
 import type { ExerciseDefinition, ExerciseEntry } from "@/lib/exercise-logging";
 import type { Prescription } from "@/lib/training";
 
@@ -28,7 +29,8 @@ export type Workout = {
   title: string;
   description: string | null;
   workout_date: string;
-  workout_type: "for_time" | "amrap" | "emom" | "strength" | "other";
+  workout_type: WodType;
+  phase_id: string | null;
   time_cap_seconds: number | null;
   notes: string | null;
   created_by: string | null;

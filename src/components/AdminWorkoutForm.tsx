@@ -1,5 +1,6 @@
 'use client'
 
+import { wodToday, WOD_TYPES } from '@/lib/daily-wod'
 import { PrescriptionEditor } from '@/components/PrescriptionEditor'
 import { validatePrescriptions, type Prescription } from '@/lib/training'
 import { useState, useEffect } from 'react'
@@ -16,7 +17,7 @@ export function AdminWorkoutForm() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = wodToday()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -102,6 +103,7 @@ export function AdminWorkoutForm() {
     }
 
     const invalid =
+      (workoutType === 'rest' && prescriptions.length ? 'Rest days cannot have personalized training targets.' : null) ||
       validatePrescriptions(prescriptions) ||
       (prescriptions.some((r) => r.strategy === 'previous')
         ? 'Daily WOD targets use percentages. Performance progression is available within programs.'
@@ -171,11 +173,7 @@ export function AdminWorkoutForm() {
             onChange={(e) => setWorkoutType(e.target.value)}
             className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-orange-500 focus:outline-none"
           >
-            <option value="for_time">For Time</option>
-            <option value="amrap">AMRAP</option>
-            <option value="emom">EMOM</option>
-            <option value="strength">Strength</option>
-            <option value="other">Other</option>
+            {WOD_TYPES.map((type) => <option key={type} value={type}>{type.replace('_', ' ')}</option>)}
           </select>
         </div>
       </div>

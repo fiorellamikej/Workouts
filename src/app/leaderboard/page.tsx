@@ -1,3 +1,4 @@
+import { wodToday } from "@/lib/daily-wod";
 import type { ResultWithProfile } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatTime } from '@/lib/utils'
@@ -19,6 +20,8 @@ export default async function LeaderboardPage() {
       workout_date,
       workout_type
     `)
+    .lte('workout_date', wodToday())
+    .neq('workout_type', 'rest')
     .order('workout_date', { ascending: false })
     .limit(10)
 
