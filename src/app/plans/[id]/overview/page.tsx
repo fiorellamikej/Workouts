@@ -69,7 +69,7 @@ export default async function ProgramOverviewPage({
     <div className="space-y-8">
       <header>
         <Link href="/plans" className="text-sm text-zinc-400">
-          ← All Plans
+          ← Training Programs
         </Link>
         <p className="mt-5 text-sm font-medium uppercase tracking-wide text-orange-400">
           Program overview

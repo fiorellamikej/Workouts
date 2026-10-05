@@ -19,6 +19,7 @@ import { LogPlanResultForm } from "@/components/LogPlanResultForm";
 import { ProgramControls, UndoCompletion } from "@/components/ProgramControls";
 import { CompletionCelebration } from "@/components/CompletionCelebration";
 import { WorkoutHistoryPicker } from "@/components/WorkoutHistoryPicker";
+import { ProgramSchedulePreview } from "@/components/ProgramSchedulePreview";
 import { formatTime } from "@/lib/utils";
 
 export default async function PlanDetailPage({
@@ -133,7 +134,7 @@ export default async function PlanDetailPage({
     <div className="space-y-8">
       <div>
         <Link href="/plans" className="text-sm text-zinc-400">
-          ← All Plans
+          ← Training Programs
         </Link>
         <Link
           href={`/plans/${id}/overview`}
@@ -256,6 +257,16 @@ export default async function PlanDetailPage({
           </p>
         )}
       </section>
+      <ProgramSchedulePreview
+        key={`${id}-${selectedAttempt}-${selected?.week_number || 1}`}
+        sessions={ordered}
+        initialWeek={selected?.week_number}
+        openByDefault
+        planId={id}
+        attempt={selectedAttempt}
+        selectedId={selected?.id}
+        completedIds={[...done]}
+      />
       {celebrationResult ? (
         <CompletionCelebration
           planId={id}

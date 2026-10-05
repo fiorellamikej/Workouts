@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 
-export function AuthButton({ user }: { user: User | null }) {
+export function AuthButton({ user, displayName }: { user: User | null; displayName?: string | null }) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -36,7 +36,7 @@ export function AuthButton({ user }: { user: User | null }) {
   return (
     <div className="flex items-center gap-3">
       <Link href="/profile" className="text-zinc-400 hover:text-white text-sm">
-        {user.email?.split('@')[0]}
+        {displayName || user.email?.split('@')[0] || 'Profile'}
       </Link>
       <button
         onClick={handleSignOut}

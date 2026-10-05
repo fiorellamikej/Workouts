@@ -28,13 +28,13 @@ export function GettingStarted({ initiallyDismissed }: { initiallyDismissed: boo
       <h2 id="getting-started-title" className="text-xl font-semibold">How to use Sword and Shield</h2>
       <ol className="list-decimal space-y-3 pl-5 text-zinc-300">
         <li><Link href="/profile" className="font-medium text-orange-400 hover:underline">Fill out your profile and PRs.</Link> Workouts with personalized targets use those inputs to scale your prescribed loads. Programs with progression rules also use your logged performance to guide future targets. If a PR is missing, enter it to get a personalized target.</li>
-        <li><Link href="/dashboard" className="font-medium text-orange-400 hover:underline">Start in Today.</Link> Not sure what to do? The Workout of the Day (WOD) is in the Today tab. If no WOD is posted, browse the plans or workout history.</li>
-        <li><Link href="/plans" className="font-medium text-orange-400 hover:underline">Explore Plans.</Link> All published programs are in the Plans tab, with a description, intent, and schedule. Review the overview, choose a program, and log your workouts to track progression.</li>
+        <li><Link href="/dashboard" className="font-medium text-orange-400 hover:underline">Start in Todays WOD.</Link> Not sure what to do? The Workout of the Day (WOD) is in the Todays WOD tab. If no WOD is posted, browse the plans or workout history.</li>
+        <li><Link href="/plans" className="font-medium text-orange-400 hover:underline">Explore Training Programs.</Link> All published programs are in the Training Programs tab, with a description, intent, and schedule. Review the overview, choose a program, and log your workouts to track progression.</li>
         <li><Link href="/feedback" className="font-medium text-orange-400 hover:underline">Use Feedback for help.</Link> Report errors or send suggestions through the Feedback tab.</li>
       </ol>
       {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
       <button type="button" onClick={dismiss} disabled={saving} className="rounded-lg bg-orange-600 px-4 py-2 font-medium text-white hover:bg-orange-500 disabled:opacity-50">{saving ? "Saving..." : "Got it"}</button>
-      <p className="text-xs text-zinc-400">You can reopen this guide from Today anytime.</p>
+      <p className="text-xs text-zinc-400">You can reopen this guide from Todays WOD anytime.</p>
     </section>
   );
 }

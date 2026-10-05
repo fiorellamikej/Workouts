@@ -93,6 +93,12 @@ export default async function HomePage() {
       </div>
 
       <WodPhaseGuide phase={phase} date={today} />
+      <nav aria-label="Daily WOD tools" className="flex flex-wrap gap-3">
+        <Link href="/workouts" className="min-h-11 rounded-lg border border-zinc-700 px-4 py-3 text-orange-400">History</Link>
+        {user && <Link href="/leaderboard" className="min-h-11 rounded-lg border border-zinc-700 px-4 py-3 text-orange-400">Leaderboards</Link>}
+        <Link href="/help" className="min-h-11 rounded-lg border border-zinc-700 px-4 py-3 text-zinc-300">Get Help</Link>
+      </nav>
+      {user && <p className="text-xs text-zinc-400">Beta usage notice: administrators can see your visits, page paths, recent activity times, and saved activity counts. We do not record typed input or screen recordings.</p>}
 
       {!workout ? (
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-8 text-center">
