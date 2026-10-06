@@ -6,18 +6,28 @@ import {
   type ExerciseEntry,
   type PreviousExercise,
 } from "@/lib/exercise-logging";
+import { ExerciseHelp } from "./ExerciseHelp";
 import { timeText } from "@/lib/training";
 export function ExerciseSetLogger({
   entries,
   onChange,
   excludeResultId,
   disabled = false,
+  compact = false,
+  collapsible = false,
+  groupLabels = {},
+  instructions = {},
 }: {
   entries: ExerciseEntry[];
   onChange: (entries: ExerciseEntry[]) => void;
   excludeResultId?: string;
   disabled?: boolean;
+  compact?: boolean;
+  collapsible?: boolean;
+  groupLabels?: Record<string, string>;
+  instructions?: Record<string, string>;
 }) {
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [previous, setPrevious] = useState<PreviousExercise[]>([]);
   const [historyError, setHistoryError] = useState("");
   const names = JSON.stringify(
@@ -45,13 +55,13 @@ export function ExerciseSetLogger({
     };
   }, [names, excludeResultId]);
   const field =
-    "w-full min-w-0 rounded-lg border border-zinc-700 bg-zinc-900 p-2 text-sm";
+    "w-full min-w-0 rounded-lg border border-zinc-700 bg-zinc-900 min-h-11 p-2 text-base";
   function patch(i: number, value: Partial<ExerciseEntry>) {
     onChange(entries.map((e, n) => (n === i ? { ...e, ...value } : e)));
   }
   return (
     <section className="space-y-4">
-      <div>
+      {!compact && <div>
         <h3 className="font-semibold">Exercise log</h3>
         <p className="text-xs text-zinc-400">
           Use one card per exercise. Add each additional set with + Add set
@@ -59,20 +69,26 @@ export function ExerciseSetLogger({
           the same exercise name to find previous performance. These entries do
           not change personalized progression; use its actual-load field below.
         </p>
-      </div>
+      </div>}
       {historyError && (
         <p role="status" className="text-xs text-amber-400">
           {historyError}
         </p>
       )}
       {entries.map((e, i) => {
+        const isCollapsed = collapsible && !!collapsed[e.id];
         const last = previous.find((p) => p.label_key === exerciseKey(e.label));
         return (
           <fieldset
             disabled={disabled}
             key={e.id}
-            className="space-y-3 rounded-xl border border-zinc-700 p-3"
+            className={`space-y-3 border border-zinc-700 p-4 ${groupLabels[e.id] ? "border-l-2 border-l-orange-500" : ""}`}
           >
+            {!isCollapsed && groupLabels[e.id] && <p className="ss-label text-orange-300">{groupLabels[e.id]}</p>}
+            {(compact || collapsible) && <div className="flex items-start justify-between gap-2"><h3 className="text-xl font-bold">{e.label || "New exercise"}</h3>{isCollapsed ? <button type="button" aria-expanded={false} aria-label={`Expand set: ${e.label}`} className="ss-secondary text-orange-300" onClick={() => setCollapsed(old => ({ ...old, [e.id]: false }))}>Expand set</button> : compact && <ExerciseHelp label={e.label} />}</div>}
+            <div hidden={isCollapsed} className="space-y-3">
+            {compact && instructions[e.id] && <p className="text-sm text-zinc-400">{instructions[e.id]}</p>}
+            <details open={compact ? undefined : true}><summary className={compact ? "cursor-pointer text-xs text-orange-300 min-h-11 py-3" : "hidden"}>Edit exercise / unit</summary>
             <div className="flex gap-2">
               <label className="flex-1 text-xs">
                 Exercise
@@ -106,6 +122,7 @@ export function ExerciseSetLogger({
                 Remove
               </button>
             </div>
+            </details>
             {last ? (
               <div className="rounded-lg bg-orange-950/30 p-2 text-xs text-orange-200">
                 <p>
@@ -218,7 +235,7 @@ export function ExerciseSetLogger({
             </div>
             <details>
               <summary className="cursor-pointer text-xs text-zinc-400">
-                Time, distance, and exercise notes
+                Add time, distance, or exercise notes
               </summary>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <label className="text-xs">
@@ -279,6 +296,8 @@ export function ExerciseSetLogger({
                 />
               </div>
             </details>
+            {collapsible && (!compact || e.sets.some(s => s.completed)) && <div className="flex justify-end"><button type="button" aria-expanded={true} aria-label={`Collapse set: ${e.label}`} onClick={() => setCollapsed(old => ({ ...old, [e.id]: true }))} className="inline-flex min-h-11 items-center justify-center border border-orange-500/70 bg-orange-500/15 px-5 py-3 text-sm font-semibold text-orange-300 hover:bg-orange-500/25">Collapse set</button></div>}
+            </div>
           </fieldset>
         );
       })}

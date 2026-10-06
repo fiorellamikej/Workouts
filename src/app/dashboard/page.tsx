@@ -2,15 +2,13 @@ import { wodToday, type WodPhase } from "@/lib/daily-wod";
 import { WodPhaseGuide } from "@/components/WodPhaseGuide";
 import { GettingStarted } from "@/components/GettingStarted";
 import { ContinuePlans } from "@/components/ContinuePlans";
-import { PersonalizedTargets } from "@/components/PersonalizedTargets";
-import type { AthleteRecord } from "@/lib/training";
 import type { ResultWithProfile } from "@/types/database";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatTime } from "@/lib/utils";
 import Link from "next/link";
-import { LogResultForm } from "@/components/LogResultForm";
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ savedPlan?: string; savedSession?: string; savedWod?: string }> }) {
+  const saved = await searchParams;
   const supabase = await createClient();
   const today = wodToday();
 
@@ -21,14 +19,6 @@ export default async function HomePage() {
   const { data: onboarding } = user
     ? await supabase.from("user_onboarding").select("dismissed_at").eq("user_id", user.id).maybeSingle()
     : { data: null };
-
-  const { data: records, error: recordsError } = user
-    ? await supabase
-        .from("athlete_records")
-        .select("*")
-        .eq("user_id", user.id)
-        .returns<AthleteRecord[]>()
-    : { data: [], error: null };
 
   const { data: workout } = await supabase
     .from("workouts")
@@ -84,8 +74,8 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-8">
+      {user && <ContinuePlans userId={user.id} savedPlan={saved.savedPlan} savedSession={saved.savedSession} />}
       {user && <GettingStarted key={user.id} initiallyDismissed={!!onboarding?.dismissed_at} />}
-      {user && <ContinuePlans userId={user.id} />}
 
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Today&apos;s WOD</h1>
@@ -152,66 +142,11 @@ export default async function HomePage() {
               )}
             </div>
 
-            <div className="mt-6 whitespace-pre-wrap text-zinc-200 leading-relaxed">
-              {workout.description}
-            </div>
-
-            {user &&
-              (recordsError ? (
-                <p className="text-red-400">
-                  Could not load personalized targets.
-                </p>
-              ) : (
-                <PersonalizedTargets
-                  rules={workout.prescriptions || []}
-                  records={records || []}
-                />
-              ))}
-
-            {workout.notes && (
-              <p className="mt-4 text-sm text-zinc-400 border-t border-zinc-800 pt-4">
-                <span className="font-medium text-zinc-300">Notes:</span>{" "}
-                {workout.notes}
-              </p>
-            )}
+            <p className="mt-4 text-sm text-zinc-400">Daily community workout</p>
+            {userResult && <p className="mt-4 text-orange-300" role="status">✓ Workout completed{saved.savedWod === workout.id ? ' and saved' : ''}</p>}
+            <Link href={`/workouts/${workout.id}`} className="ss-primary mt-5 w-full">{userResult ? 'Review Workout' : 'View Workout'} →</Link>
           </div>
-
-          {/* Log Result */}
-          {workout.workout_type === "rest" ? (
-            <p className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 text-zinc-300">Rest is part of the schedule. No workout result is needed today. Optional walking or mobility is described above.</p>
-          ) : user ? (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
-              <h3 className="text-lg font-semibold mb-4">
-                {userResult ? "Your Result" : "Log Your Result"}
-              </h3>
-              <LogResultForm
-                key={userResult?.id || workout.id}
-                workoutId={workout.id}
-                workoutType={workout.workout_type}
-                existing={userResult}
-              />
-            </div>
-          ) : (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 text-center">
-              <p className="text-zinc-400">
-                <Link
-                  href="/auth/login"
-                  className="text-orange-400 hover:underline"
-                >
-                  Log in
-                </Link>{" "}
-                or{" "}
-                <Link
-                  href="/auth/signup"
-                  className="text-orange-400 hover:underline"
-                >
-                  sign up
-                </Link>{" "}
-                to log your result and see the leaderboard.
-              </p>
-            </div>
-          )}
-
+        
           {/* Mini Leaderboard */}
           {user && topResults.length > 0 && (
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">

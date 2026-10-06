@@ -88,6 +88,9 @@ export function ExerciseDefinitionEditor({
           >
             Remove
           </button>
+          <div className="col-span-4 grid grid-cols-2 gap-2">
+            {(["section", "superset"] as const).map(key => <label key={key} className="text-xs">{key === "section" ? "Workout section (optional)" : "Superset group (optional)"}<input className={field} value={e[key] || ""} maxLength={100} placeholder={key === "section" ? "Strength" : "Superset A"} onChange={v => onChange(value.map((d, n) => n === i ? { ...d, [key]: v.target.value } : d))} /></label>)}
+          </div>
         </div>
       ))}
       <button

@@ -49,3 +49,25 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Sword and Shield: crisp panels, Signal Corps orange, accessible touch targets. */
+:root { --radius: 0rem; --signal: #f36b21; }
+@layer base {
+  h1, h2, h3, h4 { text-wrap: balance; }
+  button, input, select, textarea { accent-color: var(--signal); }
+  :focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+  input, select, textarea { font-size: 16px; }
+}
+@layer components {
+  .ss-panel { @apply border border-zinc-700 bg-zinc-900/40 p-5; }
+  .ss-title { font-family: Impact, 'Arial Narrow', sans-serif; @apply text-3xl font-normal uppercase tracking-wide leading-tight sm:text-4xl; }
+  .ss-label { @apply text-sm font-semibold uppercase tracking-[0.12em]; }
+  .ss-primary { @apply inline-flex min-h-12 items-center justify-center gap-2 border border-transparent bg-[#f36b21] px-5 py-3 font-bold uppercase tracking-wide text-zinc-950 hover:bg-orange-400 disabled:opacity-40; }
+  .ss-secondary { @apply inline-flex min-h-12 items-center justify-center gap-2 border border-zinc-600 bg-zinc-950 px-4 py-3 text-sm font-semibold hover:border-orange-400 disabled:opacity-40; }
+  .ss-field { @apply mt-1 min-h-12 w-full min-w-0 border border-zinc-600 bg-zinc-950 px-3 py-2 text-base; }
+  .ss-tag { @apply inline-block border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-mono text-zinc-300; }
+}
+/* Existing screens retain their layout while adopting square surfaces. */
+[class*="rounded"]:not([data-keep-round]) { border-radius: 0; }
+.ss-actions { position: fixed; right: max(1rem, env(safe-area-inset-right)); bottom: calc(1rem + env(safe-area-inset-bottom)); z-index: 30; }
+@media (min-width: 1100px) { .ss-actions { right: calc((100vw - 1024px) / 2 + 1rem); } }

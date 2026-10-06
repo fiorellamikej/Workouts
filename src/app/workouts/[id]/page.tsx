@@ -1,11 +1,12 @@
 import { WodPhaseGuide } from "@/components/WodPhaseGuide";
 import type { WodPhase } from "@/lib/daily-wod";
-import { PersonalizedTargets } from "@/components/PersonalizedTargets";
+import { WorkoutRunner } from "@/components/WorkoutRunner";
+import { workoutSections } from "@/lib/workout-sections";
+import { suggestion } from "@/lib/training";
 import type { AthleteRecord } from "@/lib/training";
 import type { ResultWithProfile } from "@/types/database";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatTime } from "@/lib/utils";
-import { LogResultForm } from "@/components/LogResultForm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -95,56 +96,17 @@ export default async function WorkoutDetailPage({
 
       <WodPhaseGuide phase={phase} date={workout.workout_date} />
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
-        <span className="inline-block rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs font-medium uppercase text-zinc-300">
-          {workout.workout_type.replace("_", " ")}
-        </span>
-        {workout.time_cap_seconds && (
-          <span className="ml-2 text-sm text-zinc-400">
-            Cap: {formatTime(workout.time_cap_seconds)}
-          </span>
-        )}
-        <div className="mt-4 whitespace-pre-wrap text-zinc-200 leading-relaxed">
-          {workout.description}
-        </div>
-        {user &&
-          (recordsError ? (
-            <p className="text-red-400">Could not load personalized targets.</p>
-          ) : (
-            <PersonalizedTargets
-              rules={workout.prescriptions || []}
-              records={records || []}
-            />
-          ))}
-        {workout.notes && (
-          <p className="mt-4 text-sm text-zinc-400 border-t border-zinc-800 pt-4">
-            {workout.notes}
-          </p>
-        )}
-      </div>
-
-      {workout.workout_type === "rest" ? (
-        <p className="rounded-xl border border-zinc-800 p-6 text-zinc-300">This is a scheduled rest day. No workout result is required.</p>
-      ) : user ? (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
-          <h3 className="text-lg font-semibold mb-4">
-            {userResult ? "Your Result" : "Log Your Result"}
-          </h3>
-          <LogResultForm
-            key={userResult?.id || workout.id}
-            workoutId={workout.id}
-            workoutType={workout.workout_type}
-            existing={userResult}
-          />
-        </div>
-      ) : (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 text-center">
-          <Link href="/auth/login" className="text-orange-400 hover:underline">
-            Log in
-          </Link>{" "}
-          to log a result and see the leaderboard.
-        </div>
-      )}
+      {user && !recordsError ? <WorkoutRunner
+        key={`${workout.id}-${userResult?.id || 'new'}`}
+        title={workout.title}
+        subtitle={`Daily WOD / ${formatDate(workout.workout_date)}${workout.time_cap_seconds ? ` / Time cap: ${Math.floor(workout.time_cap_seconds / 60)}:${String(workout.time_cap_seconds % 60).padStart(2, '0')}` : ''}`}
+        sections={workoutSections(workout.description, [], workout.prescriptions || [])}
+        notes={workout.notes}
+        target={{ kind: 'wod', workoutId: workout.id, workoutType: workout.workout_type }}
+        existing={userResult}
+        suggestions={Object.fromEntries((workout.prescriptions || []).map((rule: import('@/lib/training').Prescription) => [rule.id, suggestion(rule, records || [])]))}
+        rest={workout.workout_type === 'rest'}
+      /> : <section className="ss-panel space-y-4"><p className="whitespace-pre-wrap text-zinc-300">{workout.description}</p><p>{recordsError ? 'Could not load personalized targets. Refresh before logging.' : <><Link href="/auth/login" className="text-orange-300">Log in</Link> to start and log this workout.</>}</p></section>}
 
       {user && leaderboard.length > 0 && (
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">

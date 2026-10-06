@@ -4,6 +4,8 @@ export type ExerciseDefinition = {
   sets: number;
   reps: number | null;
   instructions?: string;
+  section?: string;
+  superset?: string;
 };
 export type LoggedSet = {
   reps: number | null;
@@ -56,6 +58,9 @@ export function validateDefinitions(value: unknown): ExerciseDefinition[] {
       throw new Error(
         "Check exercise names, unique IDs, sets (1–50), and reps (0–10000 or null).",
       );
+    for (const key of ["section", "superset"] as const) {
+      if (r[key] !== undefined && (typeof r[key] !== "string" || r[key]!.length > 100)) throw new Error("Section and superset names must be at most 100 characters.");
+    }
     ids.add(r.id);
     return {
       id: r.id,
@@ -63,6 +68,8 @@ export function validateDefinitions(value: unknown): ExerciseDefinition[] {
       sets: r.sets,
       reps: r.reps,
       instructions: r.instructions || "",
+      ...(r.section ? { section: r.section.trim() } : {}),
+      ...(r.superset ? { superset: r.superset.trim() } : {}),
     };
   });
 }
