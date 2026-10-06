@@ -85,7 +85,7 @@ export function ExerciseSetLogger({
             className={`space-y-3 border border-zinc-700 p-4 ${groupLabels[e.id] ? "border-l-2 border-l-orange-500" : ""}`}
           >
             {!isCollapsed && groupLabels[e.id] && <p className="ss-label text-orange-300">{groupLabels[e.id]}</p>}
-            {(compact || collapsible) && <div className="flex items-start justify-between gap-2"><h3 className="text-xl font-bold">{e.label || "New exercise"}</h3>{isCollapsed ? <button type="button" aria-expanded={false} aria-label={`Expand set: ${e.label}`} className="ss-secondary text-orange-300" onClick={() => setCollapsed(old => ({ ...old, [e.id]: false }))}>Expand set</button> : compact && <ExerciseHelp label={e.label} />}</div>}
+            {(compact || collapsible) && <div className="flex items-start justify-between gap-2"><h3 className="text-xl font-bold">{e.label || "New exercise"}</h3>{isCollapsed ? <button type="button" aria-expanded={false} aria-label={`Expand exercise: ${e.label}`} className="ss-secondary text-orange-300" onClick={() => setCollapsed(old => ({ ...old, [e.id]: false }))}>Expand exercise</button> : compact && <ExerciseHelp label={e.label} />}</div>}
             <div hidden={isCollapsed} className="space-y-3">
             {compact && instructions[e.id] && <p className="text-sm text-zinc-400">{instructions[e.id]}</p>}
             <details open={compact ? undefined : true}><summary className={compact ? "cursor-pointer text-xs text-orange-300 min-h-11 py-3" : "hidden"}>Edit exercise / unit</summary>
@@ -232,6 +232,7 @@ export function ExerciseSetLogger({
                   Remove last set
                 </button>
               )}
+              {collapsible && <button type="button" aria-expanded={true} aria-label={`Collapse exercise: ${e.label}`} onClick={() => setCollapsed(old => ({ ...old, [e.id]: true }))} className="ml-auto inline-flex min-h-11 items-center justify-center border border-orange-500/70 bg-orange-500/15 px-5 py-3 text-sm font-semibold text-orange-300 hover:bg-orange-500/25">Collapse exercise</button>}
             </div>
             <details>
               <summary className="cursor-pointer text-xs text-zinc-400">
@@ -296,7 +297,7 @@ export function ExerciseSetLogger({
                 />
               </div>
             </details>
-            {collapsible && (!compact || e.sets.some(s => s.completed)) && <div className="flex justify-end"><button type="button" aria-expanded={true} aria-label={`Collapse set: ${e.label}`} onClick={() => setCollapsed(old => ({ ...old, [e.id]: true }))} className="inline-flex min-h-11 items-center justify-center border border-orange-500/70 bg-orange-500/15 px-5 py-3 text-sm font-semibold text-orange-300 hover:bg-orange-500/25">Collapse set</button></div>}
+
             </div>
           </fieldset>
         );
