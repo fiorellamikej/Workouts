@@ -7,7 +7,9 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
-export function AdminWorkoutForm({ initialDate, onSaved }: { initialDate?: string; onSaved?: () => void } = {}) {
+type CoachWodDraft={id?:string;workout?:{title:string;description:string;workout_date:string;workout_type:string;time_cap_seconds:number|null;notes:string|null;prescriptions:Prescription[]}};
+export function AdminWorkoutForm({ initialDate, onSaved, coachDraft }: { initialDate?: string; onSaved?: () => void; coachDraft?: CoachWodDraft } = {}) {
+  const [draftId,setDraftId]=useState(coachDraft?.id||null)
   const router = useRouter()
   const [supabase] = useState(() => createClient())
   const [loading, setLoading] = useState(false)
@@ -19,13 +21,13 @@ export function AdminWorkoutForm({ initialDate, onSaved }: { initialDate?: strin
 
   const today = wodToday()
 
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [workoutDate, setWorkoutDate] = useState(initialDate || today)
-  const [workoutType, setWorkoutType] = useState('for_time')
-  const [timeCap, setTimeCap] = useState('')
-  const [notes, setNotes] = useState('')
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
+  const [title, setTitle] = useState(coachDraft?.workout?.title||'')
+  const [description, setDescription] = useState(coachDraft?.workout?.description||'')
+  const [workoutDate, setWorkoutDate] = useState(coachDraft?.workout?.workout_date || initialDate || today)
+  const [workoutType, setWorkoutType] = useState(coachDraft?.workout?.workout_type||'for_time')
+  const [timeCap, setTimeCap] = useState(coachDraft?.workout?.time_cap_seconds?String(coachDraft.workout.time_cap_seconds/60):'')
+  const [notes, setNotes] = useState(coachDraft?.workout?.notes||'')
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>(coachDraft?.workout?.prescriptions||[])
   const [reload, setReload] = useState(0)
   const [conflict, setConflict] = useState(false)
   const [existingId, setExistingId] = useState<string | null>(null)
@@ -42,6 +44,7 @@ export function AdminWorkoutForm({ initialDate, onSaved }: { initialDate?: strin
   }
 
   useEffect(() => {
+    if(coachDraft){setLoadingExisting(false);return;}
     let active = true
     async function loadExisting() {
       setLoadingExisting(true)
@@ -70,7 +73,7 @@ export function AdminWorkoutForm({ initialDate, onSaved }: { initialDate?: strin
     }
     void loadExisting()
     return () => { active = false }
-  }, [workoutDate, supabase, reload])
+  }, [workoutDate, supabase, reload, coachDraft])
 
   const handleDelete = async () => {
     if (!existingId || loading || loadingExisting) return
@@ -112,6 +115,7 @@ export function AdminWorkoutForm({ initialDate, onSaved }: { initialDate?: strin
         prescriptions, title, description, workout_date: workoutDate,
         workout_type: workoutType, time_cap_seconds: cap === null ? null : Math.round(cap), notes: notes || null,
       }
+      if(coachDraft){const {data,error}=await supabase.rpc('save_coach_workout_draft',{p_id:draftId,p_workout:payload});if(error)throw error;setDraftId(data);setMessage('Workout draft saved. Submit it from the drafts list below.');router.push(`/coach/workout-drafts?edit=${data}`);router.refresh();return;}
       const result = existingId
         ? await supabase.from('workouts').update(payload).eq('id', existingId).select('id').single()
         : await supabase.from('workouts').insert({ ...payload, created_by: user.id }).select('id').single()
@@ -138,7 +142,7 @@ export function AdminWorkoutForm({ initialDate, onSaved }: { initialDate?: strin
       onSubmit={handleSubmit}
       className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6"
     >
-      <p className="text-sm text-orange-300">{loadingExisting ? 'Checking this date...' : existingId ? `Editing the saved WOD for ${workoutDate}. Save updates this same workout.` : `New WOD for ${workoutDate}.`}</p>
+      <p className="text-sm text-orange-300">{coachDraft ? 'Coach workout draft - owner approval required.' : loadingExisting ? 'Checking this date...' : existingId ? `Editing the saved WOD for ${workoutDate}. Save updates this same workout.` : `New WOD for ${workoutDate}.`}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-zinc-300 mb-1">
@@ -240,7 +244,7 @@ export function AdminWorkoutForm({ initialDate, onSaved }: { initialDate?: strin
         disabled={loading || loadingExisting || loadFailed}
         className="rounded-lg bg-orange-600 px-6 py-2.5 font-medium text-white hover:bg-orange-500 disabled:opacity-50 transition"
       >
-        {loadingExisting ? 'Loading WOD...' : loading ? 'Working...' : existingId ? 'Update WOD' : 'Post WOD'}
+        {loadingExisting ? 'Loading WOD...' : loading ? 'Working...' : coachDraft ? 'Save workout draft' : existingId ? 'Update WOD' : 'Post WOD'}
       </button>
       </fieldset>
       {(loadFailed || conflict) && <button type="button" disabled={loading || loadingExisting} className="ss-secondary" onClick={() => { if (!conflict || window.confirm('Load the saved WOD? This will replace the unsaved fields in this form.')) setReload(n => n + 1) }}>{conflict ? 'Load saved WOD for this date' : 'Retry loading WOD'}</button>}

@@ -45,10 +45,9 @@ export function DeletePlanButton({
     <div className="space-y-3 rounded-lg border border-red-800 bg-red-950/20 p-4">
       <p className="font-medium">Delete “{title}”?</p>
       <p className="text-sm text-zinc-300">
-        This permanently removes this plan, its sessions, all user enrollments,
-        and their results from every run. Profiles, personal records, and daily
-        WOD results stay intact. To hide a plan instead, edit it and turn off
-        Published.
+        Deletion is blocked when a plan has saved results. Hide its listing through
+        Coach reviews to preserve enrollments and history. Unused plans can be
+        permanently deleted.
       </p>
       <label className="block text-sm">
         Type the exact title to confirm

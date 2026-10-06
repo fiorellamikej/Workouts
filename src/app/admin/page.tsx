@@ -22,6 +22,7 @@ export default async function AdminPage() {
   if (!profile?.is_admin) {
     return (
       <div className="text-center py-12">
+        <div className="flex flex-wrap gap-4"><Link href="/admin/roles" className="text-orange-400">User roles</Link><Link href="/admin/reviews" className="text-orange-400">Coach reviews</Link><Link href="/coach/drafts" className="text-orange-400">Coach drafts</Link><Link href="/coach/feedback" className="text-orange-400">Coach feedback notes</Link><Link href="/admin/audit" className="text-orange-400">Audit history</Link></div>
         <h1 className="text-2xl font-bold text-red-400">Access Denied</h1>
         <p className="mt-2 text-zinc-400">
           You need admin privileges to access this page.

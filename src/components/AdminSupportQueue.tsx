@@ -11,7 +11,7 @@ export function AdminSupportQueue({
   errors?: ErrorEvent[];
 }) {
   const router = useRouter();
-  const [filter, setFilter] = useState("active"),
+  const [filter, setFilter] = useState("all"),
     [busy, setBusy] = useState<string | null>(null),
     [message, setMessage] = useState("");
   const update = async (id: string, status: string) => {

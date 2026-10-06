@@ -23,6 +23,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const { data: workout } = await supabase
     .from("workouts")
     .select("*")
+    .eq("is_hidden", false)
     .eq("workout_date", today)
     .single();
 

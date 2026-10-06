@@ -9,6 +9,7 @@ export default async function WorkoutsPage() {
   const { data: workouts } = await supabase
     .from('workouts')
     .select('*')
+    .eq('is_hidden', false)
     .lte('workout_date', wodToday())
     .order('workout_date', { ascending: false })
     .limit(30)

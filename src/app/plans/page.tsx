@@ -12,6 +12,7 @@ export default async function PlansPage() {
     .from('training_plans')
     .select('*')
     .eq('is_published', true)
+    .eq('is_hidden', false)
     .order('created_at', { ascending: false })
 
   // Get user's active enrollments

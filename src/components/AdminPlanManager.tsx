@@ -43,7 +43,9 @@ type Session = {
 export function AdminPlanManager({
   existingPlan,
   existingSessions,
+  coachDraft,
 }: {
+  coachDraft?: { id?: string; sourceId?: string };
   existingPlan: Plan;
   existingSessions: Session[];
 }) {
@@ -233,10 +235,11 @@ export function AdminPlanManager({
       prescriptions: s.prescriptions,
     }));
     const { data: planId, error: saveError } = await supabase.rpc(
-      "save_training_program",
+      coachDraft ? "save_coach_training_draft" : "save_training_program",
       {
-        p_plan_id: existingPlan?.id || null,
-        p_plan: { ...planPayload, tags: tagList },
+        p_plan_id: coachDraft ? coachDraft.id || null : existingPlan?.id || null,
+        p_plan: { ...planPayload, tags: tagList, is_published: coachDraft ? false : isPublished },
+        ...(coachDraft ? {p_source: coachDraft.sourceId || null} : {}),
         p_sessions: sessionRows,
       },
     );
@@ -248,7 +251,7 @@ export function AdminPlanManager({
 
     setMessage(existingPlan ? "Plan updated!" : "Plan created!");
     setLoading(false);
-    router.push(`/admin/plans?edit=${planId}`);
+    router.push(coachDraft ? `/coach/drafts?edit=${planId}` : `/admin/plans?edit=${planId}`);
     router.refresh();
   };
 
@@ -257,7 +260,7 @@ export function AdminPlanManager({
       {/* Plan details */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 space-y-4">
         <h2 className="text-lg font-semibold">Plan Details</h2>
-        {existingPlan && (
+        {existingPlan && !coachDraft && (
           <Link
             href={`/plans/${existingPlan.id}/overview`}
             className="inline-block text-sm text-orange-400"
@@ -388,7 +391,7 @@ export function AdminPlanManager({
           />
         </label>
 
-        <label className="flex items-center gap-2 text-sm text-zinc-300">
+        {!coachDraft && <label className="flex items-center gap-2 text-sm text-zinc-300">
           <input
             type="checkbox"
             checked={isPublished}
@@ -396,7 +399,7 @@ export function AdminPlanManager({
             className="rounded border-zinc-600 bg-zinc-800 text-orange-500"
           />
           Published (visible to users)
-        </label>
+        </label>}
       </div>
 
       {/* Sessions */}
@@ -582,7 +585,7 @@ export function AdminPlanManager({
         disabled={loading || !title}
         className="rounded-lg bg-orange-600 px-8 py-3 font-medium text-white hover:bg-orange-500 disabled:opacity-50 transition"
       >
-        {loading ? "Saving..." : existingPlan ? "Update Plan" : "Create Plan"}
+        {loading ? "Saving..." : coachDraft ? "Save program draft" : existingPlan ? "Update Plan" : "Create Plan"}
       </button>
     </form>
   );
