@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { InstallGuide } from "@/components/InstallGuide";
 import { AccountAccessNotice } from "@/components/AccountAccessNotice";
 
 export default function LoginPage() {
@@ -68,6 +69,7 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-md">
       <h1 className="text-2xl font-bold mb-6">Log in</h1>
+      <LoginStatus />
       <form
         id="login-form"
         method="post"
@@ -137,7 +139,14 @@ export default function LoginPage() {
           Sign up
         </Link>
       </p>
+      <InstallGuide />
       <AccountAccessNotice />
     </div>
   );
+}
+
+function LoginStatus() {
+  const [notice, setNotice] = useState("");
+  useEffect(() => { const params = new URLSearchParams(window.location.search); setNotice(params.has("deleted") ? "Your account has been deleted." : params.has("passwordChanged") ? "Password updated. Sign in with your new password." : ""); }, []);
+  return notice ? <p role="status" className="mb-4 text-green-400">{notice}</p> : null;
 }

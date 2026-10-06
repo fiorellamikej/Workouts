@@ -4,14 +4,14 @@ export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token_hash");
   const type = request.nextUrl.searchParams.get("type");
   let destination = "/auth/login?error=confirmation";
-  if (token && (type === "email" || type === "signup")) {
+  if (token && (type === "email" || type === "signup" || type === "email_change")) {
     try {
       const client = await createClient();
       const { error } = await client.auth.verifyOtp({
         token_hash: token,
         type,
       });
-      if (!error) destination = "/dashboard";
+      if (!error) destination = type === "email_change" ? "/profile/account" : "/dashboard";
     } catch {
       /* Safe failure. */
     }

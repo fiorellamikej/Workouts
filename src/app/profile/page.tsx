@@ -72,6 +72,7 @@ export default async function ProfilePage() {
       >
         View your badges →
       </Link>
+      <Link href="/profile/account" className="inline-block rounded-lg border border-zinc-700 px-4 py-2 text-orange-400">Account settings →</Link>
       <div id="badge-settings">
         <BadgeProfileSettings
           displayName={profile?.display_name || ""}

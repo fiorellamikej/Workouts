@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   // Restrict recovery destinations to an explicit internal route.
   const recovery =
     request.nextUrl.searchParams.get("next") === "/auth/reset-password";
+  const account = request.nextUrl.searchParams.get("next") === "/profile/account";
   const failure = recovery
     ? "/auth/forgot-password?error=recovery"
     : "/auth/login?error=confirmation";
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
       const client = await createClient();
       const { error } = await client.auth.exchangeCodeForSession(code);
       if (!error)
-        destination = recovery ? "/auth/reset-password" : "/dashboard";
+        destination = recovery ? "/auth/reset-password" : account ? "/profile/account" : "/dashboard";
     } catch {
       /* Safe failure, never include token/error in the redirect. */
     }
