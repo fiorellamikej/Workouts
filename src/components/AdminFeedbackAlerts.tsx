@@ -51,8 +51,14 @@ export function AdminFeedbackAlerts({ ribbon = false }: { ribbon?: boolean }) {
       <summary className="min-h-11 cursor-pointer rounded-lg px-2 py-3 text-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400">
         Admin {count ? <span className="ml-1 rounded-full bg-orange-600 px-2 py-1 text-xs text-white" aria-label={`${count} new feedback reports`}>{count}</span> : null}
       </summary>
-      <div className="absolute right-0 z-50 w-64 space-y-1 rounded-xl border border-zinc-700 bg-zinc-950 p-3 shadow-xl">
+      <div className="w-full space-y-1 border-l border-zinc-700 pl-2">
         <Link href="/admin" className="block rounded p-3 hover:bg-zinc-800">Admin home</Link>
+        <Link href="/admin/roles" className="block rounded p-3 hover:bg-zinc-800">User roles</Link>
+        <Link href="/admin/reviews" className="block rounded p-3 hover:bg-zinc-800">Coach reviews</Link>
+        <Link href="/coach/drafts" className="block rounded p-3 hover:bg-zinc-800">Coach program drafts</Link>
+        <Link href="/coach/workout-drafts" className="block rounded p-3 hover:bg-zinc-800">Coach WOD drafts</Link>
+        <Link href="/coach/feedback" className="block rounded p-3 hover:bg-zinc-800">Coach feedback notes</Link>
+        <Link href="/admin/audit" className="block rounded p-3 hover:bg-zinc-800">Audit history</Link>
         <Link href="/admin/activity" className="block rounded p-3 hover:bg-zinc-800">Beta Activity</Link>
         <Link href="/admin/feedback" className="block rounded p-3 hover:bg-zinc-800">Feedback reports {count ? `(${count} new)` : ""}</Link>
         {error && <p role="status" className="p-2 text-xs text-amber-400">Alerts unavailable</p>}

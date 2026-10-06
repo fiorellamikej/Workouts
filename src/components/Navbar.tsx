@@ -15,7 +15,7 @@ export async function Navbar() {
         <NavDropdown label={<span aria-hidden="true">☰</span>} ariaLabel="Open navigation menu">
           {[["/dashboard", "Home / Today's Workout"], ["/plans", "Training Programs"], ["/heroes", "Hero WODs"], ["/workouts", "Workout History"], ["/leaderboard", "Leaderboards"], ["/faq", "FAQ"]].map(([href, label]) => <Link className="block min-h-11 px-3 py-3 text-sm hover:bg-zinc-800" href={href} key={href}>{label}</Link>)}
           {staffRole === "coach" && <Link href="/coach" className="block min-h-11 px-3 py-3 text-orange-300">COACH</Link>}
-          {staffRole === "owner" && <><Link href="/admin" className="block min-h-11 px-3 py-3 text-orange-300">Admin</Link><AdminFeedbackAlerts ribbon /></>}
+          {staffRole === "owner" && <AdminFeedbackAlerts ribbon />}
           <div className="border-t border-zinc-700 px-3 py-3"><AuthButton user={user} displayName={profile?.display_name} /></div>
         </NavDropdown>
         <NavDropdown label="Get Help">{[["/feedback", "Give Feedback"], ["/feedback", "Report a Bug"], ["/exercises", "Exercise Examples"], ["/faq", "FAQ"]].map(([href, label]) => <Link key={label} href={href} className="block min-h-11 px-3 py-3 text-sm hover:bg-zinc-800">{label}</Link>)}</NavDropdown>
