@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
-export function AdminWorkoutForm() {
+export function AdminWorkoutForm({ initialDate, onSaved }: { initialDate?: string; onSaved?: () => void } = {}) {
   const router = useRouter()
   const [supabase] = useState(() => createClient())
   const [loading, setLoading] = useState(false)
@@ -21,11 +21,13 @@ export function AdminWorkoutForm() {
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [workoutDate, setWorkoutDate] = useState(today)
+  const [workoutDate, setWorkoutDate] = useState(initialDate || today)
   const [workoutType, setWorkoutType] = useState('for_time')
   const [timeCap, setTimeCap] = useState('')
   const [notes, setNotes] = useState('')
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
+  const [reload, setReload] = useState(0)
+  const [conflict, setConflict] = useState(false)
   const [existingId, setExistingId] = useState<string | null>(null)
 
   const clearForm = () => {
@@ -44,6 +46,7 @@ export function AdminWorkoutForm() {
     async function loadExisting() {
       setLoadingExisting(true)
       setLoadFailed(false)
+      setConflict(false)
       setError(null)
       setMessage(null)
       setConfirmDelete(false)
@@ -58,7 +61,7 @@ export function AdminWorkoutForm() {
           setTitle(data.title)
           setDescription(data.description || '')
           setWorkoutType(data.workout_type)
-          setTimeCap(data.time_cap_seconds ? String(Math.floor(data.time_cap_seconds / 60)) : '')
+          setTimeCap(data.time_cap_seconds ? String(data.time_cap_seconds / 60) : '')
           setNotes(data.notes || '')
         } else clearForm()
       } catch {
@@ -67,7 +70,7 @@ export function AdminWorkoutForm() {
     }
     void loadExisting()
     return () => { active = false }
-  }, [workoutDate, supabase])
+  }, [workoutDate, supabase, reload])
 
   const handleDelete = async () => {
     if (!existingId || loading || loadingExisting) return
@@ -79,6 +82,7 @@ export function AdminWorkoutForm() {
       if (error) throw error
       clearForm()
       setMessage('WOD deleted. You can post a new workout for this date.')
+      onSaved?.()
       router.refresh()
     } catch {
       setError('Could not delete this WOD. Check your admin access and database migration, then reload before retrying.')
@@ -93,56 +97,40 @@ export function AdminWorkoutForm() {
     setError(null)
     setMessage(null)
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      setError('Not authenticated')
-      setLoading(false)
-      return
-    }
-
-    const invalid =
-      (workoutType === 'rest' && prescriptions.length ? 'Rest days cannot have personalized training targets.' : null) ||
-      validatePrescriptions(prescriptions) ||
-      (prescriptions.some((r) => r.strategy === 'previous')
-        ? 'Daily WOD targets use percentages. Performance progression is available within programs.'
-        : null)
-    if (invalid) {
-      setError(invalid)
-      setLoading(false)
-      return
-    }
-    const payload = {
-      prescriptions,
-      title,
-      description,
-      workout_date: workoutDate,
-      workout_type: workoutType,
-      time_cap_seconds: timeCap ? parseInt(timeCap) * 60 : null,
-      notes: notes || null,
-      created_by: user.id,
-    }
-
-    let result
-    if (existingId) {
-      result = await supabase
-        .from('workouts')
-        .update(payload)
-        .eq('id', existingId)
-    } else {
-      result = await supabase.from('workouts').insert(payload)
-    }
-
-    if (result.error) {
-      setError(result.error.message)
-      setLoading(false)
-      return
-    }
-
-    setMessage(existingId ? 'WOD updated!' : 'WOD posted!')
-    setLoading(false)
-    router.refresh()
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) throw new Error('Log in again before saving this WOD.')
+      const cap = timeCap.trim() ? Number(timeCap) * 60 : null
+      const invalid =
+        (!workoutDate ? 'Choose a workout date.' : null) ||
+        (cap !== null && (!Number.isFinite(cap) || cap < 1 || cap > 86400) ? 'Time cap must be between 1 second and 1440 minutes.' : null) ||
+        (workoutType === 'rest' && prescriptions.length ? 'Rest days cannot have personalized training targets.' : null) ||
+        validatePrescriptions(prescriptions) ||
+        (prescriptions.some(r => r.strategy === 'previous') ? 'Daily WOD targets use percentages. Performance progression is available within programs.' : null)
+      if (invalid) throw new Error(invalid)
+      const payload = {
+        prescriptions, title, description, workout_date: workoutDate,
+        workout_type: workoutType, time_cap_seconds: cap === null ? null : Math.round(cap), notes: notes || null,
+      }
+      const result = existingId
+        ? await supabase.from('workouts').update(payload).eq('id', existingId).select('id').single()
+        : await supabase.from('workouts').insert({ ...payload, created_by: user.id }).select('id').single()
+      if (result.error) {
+        if (result.error.code === '23505') {
+          setConflict(true)
+          setError('A WOD is already saved for this date. Load it below to review and edit it. Your draft has not overwritten it.')
+          return
+        }
+        throw result.error
+      }
+      setExistingId(result.data.id)
+      setConflict(false)
+      setMessage(existingId ? 'WOD updated!' : 'WOD posted! You can keep editing and save changes.')
+      onSaved?.()
+      router.refresh()
+    } catch (err) {
+      setError(err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Could not save this WOD. Check your connection and try again.')
+    } finally { setLoading(false) }
   }
 
   return (
@@ -150,6 +138,7 @@ export function AdminWorkoutForm() {
       onSubmit={handleSubmit}
       className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6"
     >
+      <p className="text-sm text-orange-300">{loadingExisting ? 'Checking this date...' : existingId ? `Editing the saved WOD for ${workoutDate}. Save updates this same workout.` : `New WOD for ${workoutDate}.`}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-zinc-300 mb-1">
@@ -214,6 +203,9 @@ export function AdminWorkoutForm() {
           </label>
           <input
             type="number"
+            min={1 / 60}
+            max={1440}
+            step="any"
             value={timeCap}
             onChange={(e) => setTimeCap(e.target.value)}
             className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-orange-500 focus:outline-none"
@@ -251,6 +243,7 @@ export function AdminWorkoutForm() {
         {loadingExisting ? 'Loading WOD...' : loading ? 'Working...' : existingId ? 'Update WOD' : 'Post WOD'}
       </button>
       </fieldset>
+      {(loadFailed || conflict) && <button type="button" disabled={loading || loadingExisting} className="ss-secondary" onClick={() => { if (!conflict || window.confirm('Load the saved WOD? This will replace the unsaved fields in this form.')) setReload(n => n + 1) }}>{conflict ? 'Load saved WOD for this date' : 'Retry loading WOD'}</button>}
       {existingId && !loadingExisting && (
         <div className="space-y-3 border-t border-zinc-700 pt-4">
           {!confirmDelete ? (

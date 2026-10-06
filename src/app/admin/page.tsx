@@ -1,7 +1,7 @@
 import { WodImportPanel } from "@/components/WodImportPanel";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { AdminWorkoutForm } from "@/components/AdminWorkoutForm";
+import { AdminWodManager } from "@/components/AdminWodManager";
 import { AdminExerciseForm } from "@/components/AdminExerciseForm";
 import Link from "next/link";
 
@@ -99,12 +99,9 @@ export default async function AdminPage() {
         )}
       </section>
 
-      <WodImportPanel />
+      <AdminWodManager />
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Post / Edit Daily WOD</h2>
-        <AdminWorkoutForm />
-      </section>
+      <WodImportPanel />
 
       <section>
         <h2 className="text-xl font-semibold mb-4">
