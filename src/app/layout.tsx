@@ -5,6 +5,7 @@ import "./globals.css";
 import { AthleteActivityTracker } from "@/components/AthleteActivityTracker";
 import { AppErrorTracker } from "@/components/AppErrorTracker";
 import { Navbar } from "@/components/Navbar";
+import { OfflineStatus } from "@/components/OfflineStatus";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <AthleteActivityTracker />
         <AppErrorTracker />
         <Navbar />
+        <OfflineStatus />
         <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
       </body>
     </html>

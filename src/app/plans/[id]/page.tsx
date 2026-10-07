@@ -16,6 +16,7 @@ import Link from "next/link";
 import { UndoCompletion } from "@/components/ProgramControls";
 import { CompletionCelebration } from "@/components/CompletionCelebration";
 import { ProgramSchedulePreview } from "@/components/ProgramSchedulePreview";
+import { DownloadProgram } from "@/components/DownloadProgram";
 
 export default async function PlanDetailPage({
   params,
@@ -198,7 +199,7 @@ export default async function PlanDetailPage({
                     const sections = workoutSections(session.description, session.exercises || [], sectionRules, plan.equipment_required || []);
                     return <article id={`session-${session.id}`} key={`${selectedAttempt}-${session.id}`} className="scroll-mt-24">
                       <WorkoutRunner
-                        key={`${selectedAttempt}-${session.id}-${result?.id || 'new'}`}
+                        key={`${selectedAttempt}-${session.id}-${result?.id || 'new'}-${result?.revision || 0}`}
                         title={session.title}
                         subtitle={`${plan.title} / Week ${session.week_number} / Day ${session.day_number}`}
                         sections={sections}
@@ -224,6 +225,7 @@ export default async function PlanDetailPage({
                             completedIds={[...done]}
                           />
                           {result && !archived && enrollment.is_following && <UndoCompletion enrollmentId={enrollment.id} resultId={result.id} />}
+                          {!archived && enrollment.is_following && enrollment.status !== 'paused' && <DownloadProgram planId={id} />}
                         </>}
                       />
                     </article>;

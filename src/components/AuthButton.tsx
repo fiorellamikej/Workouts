@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { setOfflineUser } from '@/lib/offline-store'
 import type { User } from '@supabase/supabase-js'
 
 export function AuthButton({ user, displayName }: { user: User | null; displayName?: string | null }) {
@@ -10,6 +11,7 @@ export function AuthButton({ user, displayName }: { user: User | null; displayNa
   const supabase = createClient()
 
   const handleSignOut = async () => {
+    await setOfflineUser(null)
     await supabase.auth.signOut()
     router.refresh()
   }

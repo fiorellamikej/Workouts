@@ -18,7 +18,7 @@ export function loadingGuidance(rule: Prescription): string[] {
       `After all prescribed sets and reps: hard completion adds ${a.hard}${unit}; comfortable completion adds ${a.comfortable}${unit}. Missed reps repeat the actual logged load. ${a.mode === "percentage" ? "Percentage increases use your actual last load, not your 1-rep max." : "These are fixed total-load increases."}`,
     );
     lines.push(
-      "Progression uses the latest matching exercise name, reference lift, sets and reps in your program logs. Rounding can leave a small increase unchanged. A blank exercise result saves completion without advancing load. RPE and added reps do not automatically change this target.",
+      "Completed working sets meeting the prescribed reps suggest an actual-load baseline. Confirm or override it. Warm-ups are excluded. Incomplete prescribed sets default to Missed; one heavy set does not mean all work was completed. The next target uses the latest matching exercise name, reference lift, sets and reps in this program run. RPE does not automatically select an increase.",
     );
   } else
     lines.push(

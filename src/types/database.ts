@@ -39,6 +39,7 @@ export type Workout = {
 };
 
 export type Result = {
+  revision?: number;
   id: string;
   user_id: string;
   workout_id: string;
@@ -123,6 +124,7 @@ export type UserPlanEnrollment = {
 };
 
 export type PlanResult = {
+  revision?: number;
   exercise_entries: ExerciseEntry[];
   attempt: number;
   prescriptions_snapshot: Prescription[];

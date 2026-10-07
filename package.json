@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run check:punctuation && next build",
+    "build": "npm run build:offline && npm run check:punctuation && next build",
     "start": "next start",
     "lint": "eslint",
-    "check:punctuation": "node scripts/check-punctuation.mjs"
+    "check:punctuation": "node scripts/check-punctuation.mjs",
+    "build:offline": "node scripts/build-offline.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

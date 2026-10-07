@@ -118,6 +118,7 @@ export function PersonalRecords({ records }: { records: AthleteRecord[] }) {
   return (
     <section className="space-y-5 rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
       <h2 className="text-xl font-semibold">Your Personal Records</h2>
+      <p className="border-l-2 border-amber-400 bg-zinc-900 p-3 text-sm text-zinc-200">Some programs use your saved records to calculate starting weights. Enter a recent, reliable one-rep lift or run time. Targets are suggestions you can adjust during your workout. Completed working singles above your best saved lift can automatically add a PR; warm-ups and multi-rep sets do not.</p>
       <p className="text-sm text-zinc-400">
         Enter actual one-rep maxes for lifts and finish times for runs. Your
         best result stays visible; workout targets use your most recent dated

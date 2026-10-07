@@ -97,7 +97,7 @@ export default async function WorkoutDetailPage({
       <WodPhaseGuide phase={phase} date={workout.workout_date} />
 
       {user && !recordsError ? <WorkoutRunner
-        key={`${workout.id}-${userResult?.id || 'new'}`}
+        key={`${workout.id}-${userResult?.id || 'new'}-${userResult?.revision || 0}`}
         title={workout.title}
         subtitle={`Daily WOD / ${formatDate(workout.workout_date)}${workout.time_cap_seconds ? ` / Time cap: ${Math.floor(workout.time_cap_seconds / 60)}:${String(workout.time_cap_seconds % 60).padStart(2, '0')}` : ''}`}
         sections={workoutSections(workout.description, [], workout.prescriptions || [])}

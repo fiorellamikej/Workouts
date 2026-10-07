@@ -8,6 +8,7 @@ export type ExerciseDefinition = {
   superset?: string;
 };
 export type LoggedSet = {
+  set_type?: "working" | "warmup";
   reps: number | null;
   weight: number | null;
   rpe: number | null;
@@ -110,6 +111,7 @@ export function validateEntries(entries: ExerciseEntry[]) {
     keys.add(key);
     for (const s of e.sets)
       if (
+        (s.set_type !== undefined && !["working", "warmup"].includes(s.set_type)) ||
         (s.reps !== null &&
           (!Number.isInteger(s.reps) || s.reps < 0 || s.reps > 10000)) ||
         (s.weight !== null &&

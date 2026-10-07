@@ -12,8 +12,11 @@ import { ExerciseSetLogger } from './ExerciseSetLogger'
 import { ExerciseHelp } from './ExerciseHelp'
 import { RestTimer } from './RestTimer'
 import { PlanProgress } from './PlanProgress'
+import { setBaseline, feedbackGuidance, historySummary } from '@/lib/workout-performance'
+import type { PreviousExercise } from '@/lib/exercise-logging'
+import { allLocal, getLocal, putLocal, deleteLocal, setOfflineUser, syncQueue } from '@/lib/offline-store'
 
-type Existing = { id: string; completion_time_seconds: number | null; rounds: number | null; extra_reps: number | null; weight_used: string | null; notes: string | null; is_rx: boolean; exercise_entries?: ExerciseEntry[] }
+type Existing = { id: string; completion_time_seconds: number | null; rounds: number | null; extra_reps: number | null; weight_used: string | null; notes: string | null; is_rx: boolean; exercise_entries?: ExerciseEntry[]; revision?: number; completed_at?: string; created_at?: string }
 type Target = { kind: 'plan'; planId: string; enrollmentId: string; sessionId: string; attempt: number } | { kind: 'wod'; workoutId: string; workoutType: string }
 type Props = { title: string; subtitle: string; sections: WorkoutSection[]; equipment?: string[]; notes?: string | null; estimatedMinutes?: number | null; target: Target; existing?: Existing | null; existingLogs?: ExerciseLog[]; suggestions?: Record<string, { text: string; basis: string }>; progress?: { completed: number; total: number }; nextUrl?: string; editable?: boolean; rest?: boolean; previewFooter?: ReactNode }
 type Outcome = 'hard' | 'comfortable' | 'missed'
@@ -39,6 +42,50 @@ export function WorkoutRunner({ title, subtitle, sections, equipment = [], notes
     return sections.flatMap(s => s.exercises).filter(d => { const key = exerciseKey(d.label); if (seen.has(key)) return false; seen.add(key); return true }).map(d => ({ id: d.id, label: d.label, unit: sections.flatMap(s => s.rules).find(r => r.id === d.id || exerciseKey(r.label) === exerciseKey(d.label))?.unit || 'lb', sets: Array.from({ length: d.sets }, () => ({ reps: null, weight: null, rpe: null, completed: false })) }))
   })
   const [entrySections, setEntrySections] = useState<Record<string, string>>(() => Object.fromEntries((existing?.exercise_entries || sections.flatMap(s => s.exercises)).map(e => [e.id, sections.find(s => s.exercises.some(d => d.id === e.id || exerciseKey(d.label) === exerciseKey(e.label)))?.id || sections[0].id])))
+  const [userId, setUserId] = useState(''), [ready, setReady] = useState(false), [deviceStatus, setDeviceStatus] = useState('Checking device storage...')
+  const [previous, setPrevious] = useState<PreviousExercise[]>([])
+  const [prMessage, setPrMessage] = useState('')
+  const prDialog = useRef<HTMLDialogElement>(null)
+  const checkpoints = useRef<Record<string, { operation: string; event: Record<string, unknown> }>>({})
+  const finalOperation = useRef<string | null>(null), saveChain = useRef<Promise<unknown>>(Promise.resolve())
+  const draftId = userId ? `${userId}:${target.kind}:${target.kind === 'plan' ? `${target.sessionId}:${target.attempt}` : target.workoutId}:${existing?.id || 'new'}:${existing?.revision || 0}` : ''
+  useEffect(() => {
+    let active = true
+    const restore = async () => {
+      try {
+        const { data: { user } } = await createClient().auth.getUser()
+        if (!user || !active) return
+        setUserId(user.id); await setOfflineUser(user.id)
+        const key = `${user.id}:${target.kind}:${target.kind === 'plan' ? `${target.sessionId}:${target.attempt}` : target.workoutId}:${existing?.id || 'new'}:${existing?.revision || 0}`
+        const draft = await getLocal('drafts', key)
+        if (draft && active) {
+          const saved = draft.state as { entries: ExerciseEntry[]; logs: typeof logs; visited: typeof visited; index: number; stage: typeof stage; entrySections: typeof entrySections; mode: typeof mode; time: string; rounds: string; extra: string; weight: string; note: string; rx: boolean; timerBase: number; timerStarted: number; running: boolean; checkpoints?: typeof checkpoints.current; finalOperation?: string }
+          setEntries(saved.entries); setLogs(saved.logs); setVisited(saved.visited); setIndex(Math.min(saved.index, sections.length - 1)); setStage(saved.stage); setEntrySections(saved.entrySections); setMode(saved.mode); setTime(saved.time); setRounds(saved.rounds); setExtra(saved.extra); setWeight(saved.weight); setNote(saved.note); setRx(saved.rx)
+          storedElapsed.current = saved.timerBase || 0; started.current = saved.timerStarted || Date.now(); setElapsed(storedElapsed.current + (saved.running ? Math.max(0, Math.floor((Date.now() - started.current) / 1000)) : 0)); setRunning(saved.running); checkpoints.current = saved.checkpoints || {}; finalOperation.current = saved.finalOperation || null
+          setDeviceStatus('Restored your workout from this device.')
+        } else if (active) setDeviceStatus('Device saving ready.')
+        const pending = (await allLocal('queue')).find(row => row.userId === user.id && row.draftId === key)
+        if (pending) { finalOperation.current = pending.id; setStage('complete'); setDeviceStatus('Workout queued for sync. Submitted values are locked; open Offline programs to review the queue.') }
+      } catch (e) { if (active) setDeviceStatus(e instanceof Error ? e.message : 'Device saving unavailable.') }
+      finally { if (active) setReady(true) }
+    }
+    void restore()
+    return () => { active = false }
+  // A new workout/result revision remounts this component.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    let active = true
+    const labels = [...new Set(sections.flatMap(s => [...s.exercises.map(e => e.label), ...s.rules.map(r => r.label)]))]
+    void createClient().rpc('previous_exercise_performance', { p_labels: labels, p_exclude: existing?.id || null }).then(({ data, error }) => { if (active) { setPrevious(data || []); if (error) setDeviceStatus('History could not load. Current entries remain editable.') } })
+    return () => { active = false }
+  }, [sections, existing?.id])
+  useEffect(() => {
+    if (!ready || !draftId || stage === 'preview' || finalOperation.current) return
+    const state = { entries, logs, visited, index, stage, entrySections, mode, time, rounds, extra, weight, note, rx, timerBase: storedElapsed.current, timerStarted: started.current, running, checkpoints: checkpoints.current, finalOperation: finalOperation.current }
+    setDeviceStatus('Saving on device...')
+    saveChain.current = saveChain.current.catch(() => {}).then(() => putLocal('drafts', { id: draftId, userId, updatedAt: new Date().toISOString(), title, state })).then(() => setDeviceStatus('Saved on this device. Press Done to sync the completed workout.')).catch(e => { setDeviceStatus(e.message); setError('Device saving failed. Keep this page open and save online before leaving.') })
+  }, [ready, draftId, userId, title, entries, logs, visited, index, stage, entrySections, mode, time, rounds, extra, weight, note, rx, running])
   const section = sections[index]
   const rules = sections.flatMap(s => s.rules)
   useEffect(() => {
@@ -60,7 +107,36 @@ export function WorkoutRunner({ title, subtitle, sections, equipment = [], notes
     if (index < sections.length - 1) changeSection(index + 1)
     else { if (running) { storedElapsed.current += Math.floor((Date.now() - started.current) / 1000); setElapsed(storedElapsed.current); setRunning(false) }; changeStage('review') }
   }
-  function logNext() { const invalid = validateEntries(entriesForSave(entries)); if (invalid) { setError(invalid); return }; if (target.kind === 'plan' && section.rules.length) feedback.current?.showModal(); else next() }
+  function resolvedLog(rule: typeof rules[number]) {
+    const baseline = setBaseline(rule, entries)
+    const manual = logs[rule.id]
+    return { value: manual?.value !== undefined ? manual.value : baseline ? String(baseline.value) : '', outcome: manual?.outcome || (baseline?.complete ? 'hard' : 'missed') as Outcome }
+  }
+  async function checkpointNext(skipped = false) {
+    if (busy) return
+    if (skipped) { next(true); return }
+    const entriesToRecord = entriesForSave(visibleEntries())
+    if (!entriesToRecord.some(e => e.sets.some(s => s.completed && s.set_type !== 'warmup' && s.reps === 1 && !!s.weight))) { next(); return }
+    setBusy(true)
+    try {
+      if (!userId) throw new Error('Sign in before recording a PR.')
+      const signature = JSON.stringify(entriesToRecord)
+      let checkpoint = checkpoints.current[signature]
+      if (!checkpoint) { checkpoint = { operation: crypto.randomUUID(), event: { kind: 'checkpoint', target, entries: entriesToRecord, observed_at: new Date().toISOString() } }; checkpoints.current[signature] = checkpoint }
+      await putLocal('queue', { id: checkpoint.operation, userId, event: checkpoint.event, updatedAt: String(checkpoint.event.observed_at), title })
+      if (navigator.onLine) {
+        try {
+          const outcomes = await syncQueue(userId)
+          const confirmed = await getLocal('settings', `receipt:${checkpoint.operation}`)
+          const prs = outcomes.find(o => o.id === checkpoint.operation)?.data.prs || (confirmed?.data as { prs?: { label: string; value: number; unit: string }[] } | undefined)?.prs || []
+          if (prs.length) { setPrMessage(`New one-rep PR saved: ${prs.map(p => `${p.label} ${p.value} ${p.unit}`).join(', ')}. Congratulations!`); prDialog.current?.showModal() }
+        } catch (e) { setDeviceStatus(e instanceof Error ? e.message : 'PR check saved on device; sync pending.') }
+      } else setDeviceStatus('Completed single saved on device. PR confirmation will happen when synced.')
+      next()
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save the single on this device. Retry before advancing.') }
+    finally { setBusy(false) }
+  }
+  function logNext() { const invalid = validateEntries(entriesForSave(entries)); if (invalid) { setError(invalid); return }; if (target.kind === 'plan' && section.rules.length) feedback.current?.showModal(); else void checkpointNext() }
   function visibleEntries() { return entries.filter(e => (entrySections[e.id] || sections[0].id) === section.id) }
   function updateVisible(value: ExerciseEntry[]) {
     const ids = new Set(visibleEntries().map(e => e.id))
@@ -72,7 +148,7 @@ export function WorkoutRunner({ title, subtitle, sections, equipment = [], notes
     if (mode === 'time' && !parseDuration(time)) return 'Enter a finish time as mm:ss, such as 12:30.'
     if (mode === 'amrap' && (!/^\d+$/.test(rounds) || (extra !== '' && !/^\d+$/.test(extra)) || Number(rounds) > 100000 || Number(extra) > 100000)) return 'Enter whole, nonnegative rounds and reps (maximum 100000).'
     for (const r of rules) {
-      const v = logs[r.id]?.value.trim(); if (!v) continue
+      const v = resolvedLog(r).value.trim(); if (!v) continue
       const parsed = RECORDS[r.record_key].kind === 'time' ? parseDuration(v) : Number(v)
       if (!parsed || !Number.isFinite(parsed) || parsed <= 0 || parsed >= 1000000) return `Check the actual result for ${r.label}.`
     }
@@ -84,39 +160,50 @@ export function WorkoutRunner({ title, subtitle, sections, equipment = [], notes
     setBusy(true); setError('')
     const result = { completion_time_seconds: mode === 'time' ? parseDuration(time) : null, rounds: mode === 'amrap' ? Number(rounds) : null, extra_reps: mode === 'amrap' ? Number(extra || 0) : null, weight_used: weight || null, notes: note || null, is_rx: rx, exercise_entries: entriesForSave(entries) }
     try {
-      const db = createClient()
-      if (target.kind === 'plan') {
-        const exerciseLogs = rules.filter(r => logs[r.id]?.value.trim()).map(r => ({ prescription_id: r.id, value: RECORDS[r.record_key].kind === 'time' ? parseDuration(logs[r.id].value) : Number(logs[r.id].value), unit: RECORDS[r.record_key].kind === 'time' ? 'seconds' : r.unit, outcome: logs[r.id].outcome }))
-        const { error } = await db.rpc('save_training_session_result', { p_enrollment: target.enrollmentId, p_session: target.sessionId, p_attempt: target.attempt, p_result_id: existing?.id || null, p_result: result, p_logs: exerciseLogs })
-        if (error) throw error
-        router.push(`/dashboard?savedPlan=${encodeURIComponent(target.planId)}&savedSession=${encodeURIComponent(target.sessionId)}`)
-      } else {
-        const { data: { user } } = await db.auth.getUser(); if (!user) throw new Error('Log in again to save your workout.')
-        const { error } = await db.rpc('save_wod_exercise_result', { p_workout: target.workoutId, p_result: { ...result, user_id: user.id, workout_id: target.workoutId }, p_entries: result.exercise_entries, p_result_id: existing?.id || null })
-        if (error) throw error
-        router.push(`/dashboard?savedWod=${encodeURIComponent(target.workoutId)}`)
-      }
-      router.refresh()
+      if (!userId) throw new Error('Sign in before saving.')
+      await saveChain.current
+      const pending = (await allLocal('queue')).find(row => row.userId === userId && row.draftId === draftId)
+      if (pending) finalOperation.current = pending.id
+      if (!finalOperation.current) finalOperation.current = crypto.randomUUID()
+      const operation = finalOperation.current
+      const receipt = await getLocal('settings', `receipt:${operation}`)
+      if (receipt) { router.push('/dashboard'); router.refresh(); return }
+      const old = await getLocal('queue', operation)
+      const exerciseLogs = rules.filter(r => resolvedLog(r).value.trim()).map(r => { const log = resolvedLog(r); return { prescription_id: r.id, value: RECORDS[r.record_key].kind === 'time' ? parseDuration(log.value) : Number(log.value), unit: RECORDS[r.record_key].kind === 'time' ? 'seconds' : r.unit, outcome: log.outcome } })
+      if (!old) await putLocal('queue', { id: operation, userId, draftId, title, updatedAt: new Date().toISOString(), event: { kind: 'complete', target, result, entries: result.exercise_entries, logs: exerciseLogs, result_id: existing?.id || null, expected_revision: existing?.revision || 0, observed_at: new Date().toISOString() } })
+      if (!navigator.onLine) { setDeviceStatus('Workout saved on device. Open Offline programs to sync when connected.'); setError(''); setBusy(false); return }
+      const outcomes = await syncQueue(userId)
+      const confirmed = await getLocal('settings', `receipt:${operation}`)
+      const prs = outcomes.find(o => o.id === operation)?.data.prs || (confirmed?.data as { prs?: { label: string; value: number; unit: string }[] } | undefined)?.prs || []
+      await deleteLocal('drafts', draftId)
+      if (prs.length) {
+        setPrMessage(`New one-rep PR saved: ${prs.map(p => `${p.label} ${p.value} ${p.unit}`).join(', ')}. Congratulations!`); prDialog.current?.showModal(); setBusy(false)
+      } else { router.push(target.kind === 'plan' ? `/dashboard?savedPlan=${encodeURIComponent(target.planId)}&savedSession=${encodeURIComponent(target.sessionId)}` : `/dashboard?savedWod=${encodeURIComponent(target.workoutId)}`); router.refresh() }
     } catch (e) { void reportAppError(e); setError(e && typeof e === 'object' && 'message' in e ? String(e.message) : 'Could not save. Check your connection and retry.'); setBusy(false) }
   }
   const projected = progress ? Math.min(progress.total, progress.completed + (existing || rest ? 0 : 1)) : 0
   const equipmentList = [...new Set([...equipment, ...sections.flatMap(s => s.equipment)])]
   function targetFields(sectionRules = rules) { return sectionRules.map(r => {
-    const value = logs[r.id] || { value: '', outcome: 'hard' as Outcome }
+    const value = resolvedLog(r)
     return <div key={r.id} className="ss-panel space-y-3"><h3 className="font-bold">{r.label}</h3><p className="text-orange-300">{r.sets} × {r.reps} · {suggestions[r.id]?.text || 'Choose your load manually'}</p><p className="text-sm text-zinc-400">{suggestions[r.id]?.basis}</p>
+      {previous.find(p => p.label_key === exerciseKey(r.label)) && <div className="border-l-2 border-amber-400 p-3 text-sm text-zinc-100"><strong className="text-amber-200">Last time</strong><p>{historySummary(previous.find(p => p.label_key === exerciseKey(r.label))!)}</p><p className="text-zinc-300">{new Date(previous.find(p => p.label_key === exerciseKey(r.label))!.completed_at).toLocaleDateString()}</p></div>}
+      {!suggestions[r.id]?.basis && <p className="text-sm text-zinc-100">Add your {RECORDS[r.record_key].label} record in <Link href="/profile#record-form" className="text-amber-200 underline">PR logging</Link>, or choose your load manually.</p>}
+      {setBaseline(r, entries) && <p className="text-sm text-amber-200">Suggested actual-load baseline: {setBaseline(r, entries)!.value} {r.unit}, from {setBaseline(r, entries)!.count} completed working set(s) meeting {r.reps} reps. Confirm or override below.{!setBaseline(r, entries)!.complete && ' Fewer than the prescribed sets qualify; feedback defaults to Missed.'}</p>}
       <label className="block text-sm">Actual {RECORDS[r.record_key].kind === 'time' ? 'time (mm:ss)' : `load (${r.unit})`} used<input className="ss-field" value={value.value} onChange={e => setLogs(old => ({ ...old, [r.id]: { ...value, value: e.target.value } }))} placeholder="Optional actual result" /></label>
       <label className="block text-sm">How did it go?<select className="ss-field" value={value.outcome} onChange={e => setLogs(old => ({ ...old, [r.id]: { ...value, outcome: e.target.value as Outcome } }))}><option value="hard">Hard: completed all sets and reps</option><option value="comfortable">Comfortable: completed all sets and reps</option><option value="missed">Missed sets or reps</option></select></label>
-      <details className="text-sm text-zinc-400"><summary className="min-h-11 cursor-pointer py-3 text-orange-300">Loading and progression guidance</summary>{loadingGuidance(r).map(line => <p key={line} className="mt-2">{line}</p>)}</details>
+      <p className="text-sm text-zinc-200">{feedbackGuidance(r)[value.outcome]} RPE does not select the increase automatically.</p>
+      <details className="text-sm text-zinc-200"><summary className="min-h-11 cursor-pointer py-3 text-orange-300">Loading and progression guidance</summary>{loadingGuidance(r).map(line => <p key={line} className="mt-2">{line}</p>)}</details>
     </div>
   }) }
   return <div ref={top} className="scroll-mt-24 space-y-5 pb-32">
+    <p role="status" className="text-sm text-amber-200">{deviceStatus}</p>
     <p className="font-mono text-xs uppercase tracking-wider text-orange-300">{subtitle}</p>
     {stage === 'preview' && <>
       <h1 className="ss-title">{title}</h1><p className="text-zinc-400">{rest ? 'Scheduled rest' : `${sections.length} workout section${sections.length === 1 ? '' : 's'}`}{estimatedMinutes ? ` · About ${estimatedMinutes} minutes` : ''}{existing ? ' · Completed' : ''}</p>
       {!!equipmentList.length && <section><h2 className="ss-label mb-3">Required equipment{equipment.length ? ' (plan)' : ''}</h2><div className="flex flex-wrap gap-2">{equipmentList.map(e => <span className="ss-tag" key={e}>{e}</span>)}</div></section>}
       {sections.map((s, n) => <section key={s.id} className="ss-panel space-y-4"><h2 className="ss-label flex gap-3"><span className="text-orange-400">{String(n + 1).padStart(2, '0')}</span>{s.title}</h2><p className="whitespace-pre-wrap leading-relaxed text-zinc-300">{s.instructions || 'Follow the exercise instructions below.'}</p>{supersetGroups(s).map((group, i) => <div className={group.label ? 'space-y-3 border-l-2 border-orange-500 pl-4' : 'space-y-3'} key={i}>{group.label && <h3 className="ss-label text-orange-300">{group.label}</h3>}{group.exercises.map(e => <div key={e.id} className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{e.label}</h3><p className="text-sm text-zinc-400">{e.sets} sets{e.reps != null ? ` × ${e.reps} reps` : ''}</p>{e.instructions && <p className="mt-1 text-sm text-zinc-300">{e.instructions}</p>}</div><ExerciseHelp label={e.label} /></div>)}</div>)}</section>)}
       {notes && <details className="ss-panel"><summary className="min-h-11 cursor-pointer font-semibold">Workout notes</summary><p className="whitespace-pre-wrap leading-relaxed text-zinc-300">{notes}</p></details>}
-      {rest ? <p className="ss-panel">Rest is part of your plan. No workout result is needed today.</p> : editable ? <button onClick={start} className="ss-primary w-full">{existing ? 'Review / Edit Saved Workout' : 'Start Workout'} →</button> : <p className="ss-panel">Logging is unavailable while this program is paused or archived. Your saved history remains available.</p>}
+      {rest ? <p className="ss-panel">Rest is part of your plan. No workout result is needed today.</p> : editable ? <button disabled={!ready || !userId} onClick={start} className="ss-primary w-full">{existing ? 'Review / Edit Saved Workout' : 'Start Workout'} →</button> : <p className="ss-panel">Logging is unavailable while this program is paused or archived. Your saved history remains available.</p>}
       {progress && <PlanProgress {...progress} />}
       {previewFooter}
       <Link href="/dashboard" className="ss-secondary">Back Home</Link>
@@ -130,9 +217,9 @@ export function WorkoutRunner({ title, subtitle, sections, equipment = [], notes
       <ExerciseSetLogger entries={visibleEntries()} onChange={updateVisible} excludeResultId={existing?.id} disabled={busy} collapsible compact instructions={Object.fromEntries(section.exercises.map(e => [e.id, e.instructions || '']))} groupLabels={Object.fromEntries(supersetGroups(section).flatMap(g => g.exercises.map(e => [e.id, g.label])))} />
       {target.kind === 'plan' ? targetFields(section.rules) : section.rules.map(r => <div className="ss-panel" key={r.id}><p className="font-bold">{r.label} · {r.sets} × {r.reps}</p><p className="text-orange-300">{suggestions[r.id]?.text}</p><p className="mt-2 text-sm text-zinc-400">{suggestions[r.id]?.basis}</p></div>)}
       <details className="ss-panel"><summary className="ss-label min-h-11 cursor-pointer py-3">Rest timer</summary><RestTimer /></details>
-      <p className="text-xs text-zinc-400">Log & Next advances this section only. Nothing is saved until Done on the final review.</p>
+      <p className="text-xs text-zinc-400">Entries save on this device as you work. Log & Next checks completed singles for PRs. Done saves the full result and progression, or queues it offline.</p>
       {error && <p role="alert" className="text-red-300">{error}</p>}
-      <div className="ss-actions flex gap-2"><button type="button" className="ss-secondary" onClick={() => next(true)}>Skip</button><button type="button" className="ss-primary" onClick={logNext}>{index === sections.length - 1 ? 'Log and Review Workout' : 'Log & Next'} →</button></div>
+      <div className="ss-actions flex gap-2"><button type="button" className="ss-secondary" disabled={busy} onClick={() => next(true)}>Skip</button><button type="button" className="ss-primary" disabled={busy} onClick={logNext}>{index === sections.length - 1 ? 'Log and Review Workout' : 'Log & Next'} →</button></div>
       <button type="button" className="ss-secondary" onClick={() => changeStage('preview')}>Workout overview</button>
     </>}
     {stage === 'review' && <>
@@ -152,9 +239,10 @@ export function WorkoutRunner({ title, subtitle, sections, equipment = [], notes
         {mode !== 'just_done' && <p className="font-mono text-orange-300">{mode === 'time' ? `Finish time: ${time}` : `${rounds} rounds + ${extra || 0} reps`}</p>}
         {sections.some(s => visited[s.id] !== 'done') && <p className="text-sm text-orange-300">Some sections were skipped or not reviewed. Review the log and scaling notes before saving.</p>}
       </section>{progress && <PlanProgress completed={projected} total={progress.total} pending={!existing} />}
-      {error && <p role="alert" className="text-red-300">{error}</p>}<button className="ss-secondary w-full" disabled={busy} onClick={() => changeStage('review')}>Review / Edit</button><button className="ss-primary w-full" disabled={busy} onClick={save}>{busy ? 'Saving...' : existing ? 'Done / Save Corrections' : 'Done / Save Workout'}</button>
+      {error && <p role="alert" className="text-red-300">{error}</p>}<button className="ss-secondary w-full" disabled={busy || !!finalOperation.current} onClick={() => changeStage('review')}>Review / Edit</button><button className="ss-primary w-full" disabled={busy} onClick={save}>{busy ? 'Saving...' : existing ? 'Done / Save Corrections' : 'Done / Save Workout'}</button>
       <p className="text-center text-xs text-zinc-400">Done commits your result and returns Home.{nextUrl ? ' Your next scheduled workout will be available to preview.' : ''}</p>
     </>}
-    <dialog ref={feedback} className="w-[calc(100%-2rem)] max-w-lg border border-zinc-600 bg-zinc-950 p-5 text-zinc-100 backdrop:bg-black/80"><h2 className="ss-title text-2xl">How did it go?</h2><p className="my-3 text-zinc-400">Choose an outcome for each target. Actual results entered above guide the next suggested load; blank results do not change progression.</p>{section.rules.map(r => { const value = logs[r.id] || { value: '', outcome: 'hard' as Outcome }; return <fieldset key={r.id} className="my-4 space-y-2"><legend className="mb-2 font-bold">{r.label}</legend>{(['hard', 'comfortable', 'missed'] as const).map(outcome => <label key={outcome} className={`flex min-h-14 items-center gap-3 border p-3 ${value.outcome === outcome ? 'border-orange-500 bg-orange-500/10' : 'border-zinc-600'}`}><input type="radio" name={`outcome-${r.id}`} checked={value.outcome === outcome} onChange={() => setLogs(old => ({ ...old, [r.id]: { ...value, outcome } }))} /><span><strong className="uppercase">{outcome === 'missed' ? 'Missed reps' : outcome}</strong><span className="block text-sm text-zinc-400">{outcome === 'missed' ? 'Missed sets or reps' : `Completed all sets and reps${outcome === 'hard' ? ', but hard' : ' comfortably'}`}</span></span></label>)}</fieldset> })}<button type="button" className="ss-primary w-full" onClick={() => { feedback.current?.close(); next() }}>Continue →</button><button type="button" className="ss-secondary mt-2 w-full" onClick={() => feedback.current?.close()}>Back to section</button></dialog>
+    <dialog ref={prDialog} className="w-[calc(100%-2rem)] max-w-lg border border-amber-400 bg-zinc-950 p-5 text-zinc-100 backdrop:bg-black/80"><h2 className="ss-title text-amber-200">New personal record!</h2><p className="my-4">{prMessage}</p><button type="button" className="ss-primary" onClick={() => { prDialog.current?.close(); if (finalOperation.current) { router.push('/dashboard'); router.refresh() } }}>Continue</button></dialog>
+    <dialog ref={feedback} className="w-[calc(100%-2rem)] max-w-lg border border-zinc-600 bg-zinc-950 p-5 text-zinc-100 backdrop:bg-black/80"><h2 className="ss-title text-2xl">How did it go?</h2><p className="my-3 text-zinc-400">Choose an outcome for each target. Actual results entered above guide the next suggested load; blank results do not change progression.</p>{section.rules.map(r => { const value = resolvedLog(r); return <fieldset key={r.id} className="my-4 space-y-2"><legend className="mb-2 font-bold">{r.label}</legend>{(['hard', 'comfortable', 'missed'] as const).map(outcome => <label key={outcome} className={`flex min-h-14 items-center gap-3 border p-3 ${value.outcome === outcome ? 'border-orange-500 bg-orange-500/10' : 'border-zinc-600'}`}><input type="radio" name={`outcome-${r.id}`} checked={value.outcome === outcome} onChange={() => setLogs(old => ({ ...old, [r.id]: { ...value, outcome } }))} /><span><strong className="uppercase">{outcome === 'missed' ? 'Missed reps' : outcome}</strong><span className="block text-sm text-zinc-200">{outcome === 'missed' ? 'Missed sets or reps' : `Completed all sets and reps${outcome === 'hard' ? ', but hard' : ' comfortably'}`} · {feedbackGuidance(r)[outcome]}</span></span></label>)}</fieldset> })}<button type="button" className="ss-primary w-full" disabled={busy} onClick={() => { feedback.current?.close(); void checkpointNext() }}>Continue →</button><button type="button" className="ss-secondary mt-2 w-full" onClick={() => feedback.current?.close()}>Back to section</button></dialog>
   </div>
 }

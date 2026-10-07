@@ -8,6 +8,7 @@ import {
 } from "@/lib/exercise-logging";
 import { ExerciseHelp } from "./ExerciseHelp";
 import { timeText } from "@/lib/training";
+import { workingSets } from "@/lib/workout-performance";
 export function ExerciseSetLogger({
   entries,
   onChange,
@@ -67,7 +68,7 @@ export function ExerciseSetLogger({
           Use one card per exercise. Add each additional set with + Add set
           inside that card, including ramped loads. Blank values stay blank. Use
           the same exercise name to find previous performance. These entries do
-          not change personalized progression; use its actual-load field below.
+          can suggest a progression baseline when completed working sets meet the prescribed reps. Warm-up logging is optional.
         </p>
       </div>}
       {historyError && (
@@ -129,7 +130,7 @@ export function ExerciseSetLogger({
                   Last time · {new Date(last.completed_at).toLocaleDateString()}{" "}
                   · {last.source}
                 </p>
-                {last.entry.sets.map((s, n) => (
+                {workingSets(last.entry).filter(s => s.completed).map((s, n) => (
                   <span className="mr-3 inline-block" key={n}>
                     Set {n + 1}: {s.reps ?? "N/A"} reps ·{" "}
                     {s.weight == null ? "N/A" : `${s.weight} ${last.entry.unit}`}{" "}
@@ -157,9 +158,9 @@ export function ExerciseSetLogger({
             {e.sets.map((s, n) => (
               <div
                 key={n}
-                className="grid grid-cols-[1.5rem_1fr_1fr_1fr_2rem] items-end gap-2"
+                className="grid grid-cols-[2.75rem_1fr_1fr_1fr_2rem] items-end gap-1 sm:gap-2"
               >
-                <span className="pb-2 text-xs text-zinc-400">{n + 1}</span>
+                <button type="button" className="min-h-11 rounded border border-zinc-600 text-sm text-amber-200" aria-pressed={s.set_type === 'warmup'} aria-label={`${e.label} row ${n + 1}: ${s.set_type === 'warmup' ? 'warm-up, change to working set' : 'working set, change to warm-up'}`} onClick={() => patch(i, { sets: e.sets.map((t, j) => j === n ? { ...t, set_type: t.set_type === 'warmup' ? 'working' : 'warmup' } : t) })}>{s.set_type === 'warmup' ? 'W' : e.sets.slice(0, n + 1).filter(t => t.set_type !== 'warmup').length}</button>
                 {(["reps", "weight", "rpe"] as const).map((k) => (
                   <label key={k} className="text-xs">
                     {k === "weight" ? e.unit : k === "rpe" ? "RPE" : "Reps"}
@@ -208,6 +209,7 @@ export function ExerciseSetLogger({
               </div>
             ))}
             <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className="ss-secondary text-amber-200" disabled={e.sets.length >= 50} onClick={() => patch(i, { sets: [...e.sets, { set_type: 'warmup', reps: null, weight: null, rpe: null, completed: false }] })}>+ Add warm-up set</button>
               <button
                 type="button"
                 className="inline-flex min-h-11 items-center justify-center rounded-lg border border-orange-500/70 bg-orange-500/15 px-5 py-3 text-sm font-semibold text-orange-300 hover:bg-orange-500/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400 disabled:opacity-40"
@@ -216,7 +218,7 @@ export function ExerciseSetLogger({
                   patch(i, {
                     sets: [
                       ...e.sets,
-                      { reps: null, weight: null, rpe: null, completed: false },
+                      { set_type: 'working', reps: null, weight: null, rpe: null, completed: false },
                     ],
                   })
                 }

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AdminWorkoutForm } from './AdminWorkoutForm'
 import { createClient } from '@/lib/supabase/client'
 import { validDate, wodToday } from '@/lib/daily-wod'
+import { WodSupplyAlert } from './WodSupplyAlert'
 
 type QueuedWod = { id: string; workout_date: string; title: string; workout_type: string; description: string; notes: string | null; time_cap_seconds: number | null; phase_id: string | null }
 const PAGE_SIZE = 25
@@ -45,6 +46,7 @@ export function AdminWodManager() {
     editor.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
   return <div className="space-y-8">
+    <WodSupplyAlert revision={revision} />
     <section className="ss-panel space-y-4" aria-label="Daily WOD queue">
       <h2 className="text-xl font-semibold">Daily WOD Queue</h2>
       <p className="text-sm text-zinc-400">Review saved daily WODs and open a date to edit. This includes individual WODs and imported phases.</p>
