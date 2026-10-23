@@ -8,7 +8,7 @@ export async function Navbar() {
   const { data: { user } } = await db.auth.getUser()
   const { data: profile } = user ? await db.from('profiles').select('is_admin,display_name').eq('id', user.id).maybeSingle() : { data: null }
   const { data: staffRole } = user ? await db.rpc("my_staff_role") : { data: "member" };
-  return <header className="sticky top-0 z-50 border-b border-zinc-700 bg-zinc-950/95 backdrop-blur">
+ return <header className="sticky top-0 z-50 border-b border-zinc-700 bg-zinc-950/95 pt-[env(safe-area-inset-top)] backdrop-blur">
     <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
       <Link href="/dashboard" className="min-w-0 text-sm font-bold uppercase tracking-tight text-orange-400 sm:text-xl">Sword and Shield</Link>
       <nav aria-label="Main navigation" className="flex items-center gap-2">

@@ -28,7 +28,7 @@ export async function ContinuePlans({ userId, savedPlan, savedSession }: { userI
       const shown = item.saved || item.next
       const week = shown?.week_number || 1
       const href = shown ? `/plans/${item.e.plan_id}?day=${shown.id}` : `/plans/${item.e.plan_id}`
-      return <article key={item.e.id} className="space-y-4">   if (item.error) return <p className="ss-panel text-red-300" key={item.e.id}>Could not load this program.</p>
+      return <article key={item.e.id} className="space-y-4">
       {item.saved && <p role="status" className="border border-orange-500 bg-orange-500/10 px-4 py-3 font-semibold text-orange-300">✓ Workout saved. Nice work!</p>}
       <section className="ss-panel space-y-4 border-t-4 border-t-orange-500">
         <div className="flex justify-between gap-3"><h2 className="ss-label text-orange-300">{i === 0 ? "Today's Workout" : 'Also Following'}</h2><span className="text-xs text-zinc-400">{item.e.status === 'paused' ? 'Paused' : item.saved ? 'Completed' : ''}</span></div>

@@ -11,6 +11,8 @@
     "build:offline": "node scripts/build-offline.mjs"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.10",
     "class-variance-authority": "^0.7.1",
@@ -23,6 +25,7 @@
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
     "@eslint/eslintrc": "^3.3.7",
     "@types/node": "^20",
     "@types/react": "^19",
